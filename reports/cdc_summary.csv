@@ -1,0 +1,5 @@
+clock_ratio,source_period_ps,target_period_ps,channels,checks,status,trace
+1:1,10000,10000,AW/W/B/AR/R,112,PASS,build/traces/cdc_1_1.jsonl
+2:3,10000,6666,AW/W/B/AR/R,112,PASS,build/traces/cdc_2_3.jsonl
+3:2,10000,15000,AW/W/B/AR/R,112,PASS,build/traces/cdc_3_2.jsonl
+5:3,10000,16666,AW/W/B/AR/R,112,PASS,build/traces/cdc_5_3.jsonl

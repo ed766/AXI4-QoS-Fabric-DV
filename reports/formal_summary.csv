@@ -1,0 +1,5 @@
+property_group,mode,depth,status,runtime_seconds,note
+qos_grant_safety,bounded_verilator,33,PASS,NA,three executable arbiter invariants
+qos_arbiter_safety,Yosys_SMT_induction,40,PASS,0.122,"grant ownership, availability, and highest-QoS safety"
+qos_arbiter_reachability,Yosys_SMT_cover,80,PASS,NA,contention and aging override covers reachable
+full_fabric_solver,Yosys_SMT,NA,SKIP,NA,requires a frontend supporting multidimensional SystemVerilog ports

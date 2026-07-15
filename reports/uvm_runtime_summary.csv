@@ -1,0 +1,5 @@
+test,status,uvm_info,uvm_warning,uvm_error,uvm_fatal,log
+uvm_single_route_test,PASS,12,2,0,0,build/uvm/logs/uvm_single_route_test.log
+uvm_qos_contention_test,PASS,12,2,0,0,build/uvm/logs/uvm_qos_contention_test.log
+uvm_error_security_test,PASS,12,2,0,0,build/uvm/logs/uvm_error_security_test.log
+uvm_multi_outstanding_test,PASS,18,2,0,0,build/uvm/logs/uvm_multi_outstanding_test.log

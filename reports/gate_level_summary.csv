@@ -1,0 +1,2 @@
+test,status,checks,note
+qos_arbiter_zero_delay_gate_smoke,PASS,3,Yosys generic-cell netlist; full-fabric gate smoke requires read-slang frontend

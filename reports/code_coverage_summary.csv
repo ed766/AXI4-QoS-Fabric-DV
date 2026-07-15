@@ -1,0 +1,9 @@
+scope,covered_lines,total_lines,line_percent,status
+design_rtl,432,503,85.88,PASS
+reviewed_executable_rtl,304,326,93.25,PASS
+fabric_core,349,399,87.47,PASS
+cdc_bridge,83,104,79.81,PASS
+verification_collateral,434,504,86.11,PASS
+all_instrumented,866,1007,86.00,PASS
+raw_design_branch,99,104,95.19,PASS
+raw_design_toggle,1701,2471,68.84,PASS

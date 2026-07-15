@@ -1,0 +1,57 @@
+area,coverage_point,status,evidence
+operation,read,HIT,observed request handshake
+operation,write,HIT,observed request handshake
+initiator,master_0,HIT,observed initiator handshake
+initiator,master_1,HIT,observed initiator handshake
+initiator,master_2,HIT,observed initiator handshake
+initiator,master_3,HIT,observed initiator handshake
+target,target_0,HIT,observed mapped target
+target,target_1,HIT,observed mapped target
+target,target_2,HIT,observed mapped target
+target,target_3,HIT,observed mapped target
+burst,len_1,HIT,observed AxLEN
+burst,len_2,HIT,observed AxLEN
+burst,len_4,HIT,observed AxLEN
+burst,len_8,HIT,observed AxLEN
+burst,len_16,HIT,observed AxLEN
+size,size_1B,HIT,observed AxSIZE
+size,size_2B,HIT,observed AxSIZE
+size,size_4B,HIT,observed AxSIZE
+size,size_8B,HIT,observed AxSIZE
+strobe,full,HIT,observed WSTRB
+strobe,single_byte,HIT,observed WSTRB
+strobe,partial_multi_byte,HIT,observed WSTRB
+response,OKAY,HIT,observed response handshake
+response,SLVERR,HIT,observed response handshake
+response,DECERR,HIT,observed response handshake
+error,unmapped,HIT,observed request/response fields
+error,misaligned,HIT,observed request/response fields
+error,unsupported_burst,HIT,observed request/response fields
+error,cross_4k,HIT,observed request/response fields
+error,security_deny,HIT,observed request/response fields
+error,read_downstream,HIT,observed request/response fields
+error,write_downstream,HIT,observed request/response fields
+security,secure_allow,HIT,secure target request reached target
+security,nonsecure_deny,HIT,nonsecure target request rejected
+arbitration,high_qos_priority,HIT,observed grant/data event
+arbitration,equal_qos_rr,HIT,observed grant/data event
+arbitration,two_way_contention,HIT,observed grant/data event
+arbitration,four_way_contention,HIT,observed grant/data event
+arbitration,write_burst_lock,HIT,observed grant/data event
+arbitration,starvation_override,HIT,observed grant/data event
+routing_reset_cdc,id_restore,HIT,observed trace invariant
+routing_reset_cdc,read_burst_lock,HIT,observed trace invariant
+routing_reset_cdc,local_error_no_target,HIT,observed trace invariant
+routing_reset_cdc,reset_recovery,HIT,observed trace invariant
+routing_reset_cdc,async_read,HIT,observed trace invariant
+routing_reset_cdc,async_write,HIT,observed trace invariant
+routing_reset_cdc,post_reset_no_ghost,HIT,observed trace invariant
+backpressure,read_25,HIT,configured stall plus accepted operation
+backpressure,write_25,HIT,configured stall plus accepted operation
+backpressure,read_75,HIT,configured stall plus accepted operation
+backpressure,write_75,HIT,configured stall plus accepted operation
+random,read_mix,HIT,observed seeded transaction fields
+random,write_mix,HIT,observed seeded transaction fields
+random,error_mix,HIT,observed seeded transaction fields
+random,security_mix,HIT,observed seeded transaction fields
+random,qos_mix,HIT,observed seeded transaction fields

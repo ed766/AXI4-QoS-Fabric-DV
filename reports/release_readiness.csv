@@ -1,0 +1,15 @@
+criterion,measured,target,status
+named_regression,25,25,PASS
+uvm_runtime_smoke,4,4,PASS
+seeded_random_regression,100,100,PASS
+functional_coverage,56,56,PASS
+interaction_coverage,46,46,PASS
+mutation_detection,6,6,PASS
+bounded_property_groups,1,1,PASS
+solver_formal_groups,2,2,PASS
+model_replay,125,125,PASS
+cdc_clock_ratios,4,4,PASS
+performance_points,112,24,PASS
+synthesized_blocks,2,2,PASS
+gate_level_smoke,1,1,PASS
+reviewed_executable_line_percent,93.25,90.0,PASS

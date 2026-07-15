@@ -1,0 +1,8 @@
+build/
+coverage.dat
+*.log
+*.fst
+*.vcd
+*.pyc
+__pycache__/
+.venv/

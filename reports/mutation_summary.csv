@@ -1,0 +1,7 @@
+mutation,compile,detected,detector
+decode_boundary_error,PASS,YES,assertion/scoreboard
+id_encoding_corruption,PASS,YES,assertion/scoreboard
+early_write_route_unlock,PASS,YES,assertion/scoreboard
+wrong_response_owner,PASS,YES,assertion/scoreboard
+age_counter_disabled,PASS,YES,assertion/scoreboard
+security_mask_bypass,PASS,YES,assertion/scoreboard

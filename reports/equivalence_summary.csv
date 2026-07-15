@@ -1,0 +1,3 @@
+check,status,reason
+qos_arbiter_elaboration_equivalence,PARTIAL,Yosys proves combinational outputs; sequential state matching needs constrained reset setup
+full_fabric_rtl_vs_netlist,SKIP,requires read-slang-capable frontend for multidimensional ports

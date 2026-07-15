@@ -1,0 +1,65 @@
+name: verification
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  quick:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y verilator yosys g++ make python3 python3-venv libsystemc-dev
+      - run: make lint model-check functional-coverage performance-sweep
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quick-evidence
+          path: |
+            reports/*.csv
+            docs/*.md
+  implementation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y yosys verilator python3 make
+      - run: make synth-check equivalence-check gate-level-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: implementation-status
+          path: reports/*.csv
+  uvm-closure:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y autoconf flex bison g++ make python3
+      - uses: actions/cache@v4
+        id: verilator-cache
+        with:
+          path: ~/.local/verilator-v5.048
+          key: verilator-v5.048-ubuntu-24.04
+      - if: steps.verilator-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch v5.048 https://github.com/verilator/verilator.git /tmp/verilator
+          cd /tmp/verilator
+          autoconf
+          ./configure --prefix=$HOME/.local/verilator-v5.048
+          make -j2
+          make install
+      - run: git clone https://github.com/chipsalliance/uvm-verilator.git /tmp/uvm-verilator && git -C /tmp/uvm-verilator checkout 656f20d087370a7c742e00188d20bbf30fa95339
+      - run: make uvm-smoke VERILATOR_UVM=$HOME/.local/verilator-v5.048/bin/verilator UVM_HOME=/tmp/uvm-verilator/src
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uvm-runtime-evidence
+          path: reports/uvm_runtime_summary.csv
+  solver-properties:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y verilator yosys python3 python3-venv make
+      - run: make formal-prove mutation-check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: solver-property-evidence
+          path: |
+            reports/formal_summary.csv
+            reports/mutation_summary.csv

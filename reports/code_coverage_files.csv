@@ -1,0 +1,8 @@
+file,covered_lines,total_lines,line_percent
+rtl/async_fifo_gray.sv,41,42,97.62
+rtl/axi4_async_bridge.sv,42,62,67.74
+rtl/axi4_qos_fabric.sv,288,327,88.07
+rtl/qos_arbiter.sv,61,72,84.72
+sim/assertions/axi4_fabric_assertions.sv,59,79,74.68
+sim/axi_memory_model.sv,93,104,89.42
+sim/tb_axi4_qos_fabric.sv,282,321,87.85
