@@ -1,5 +1,9 @@
 name: verification
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 jobs:
   quick:
     runs-on: ubuntu-24.04
@@ -29,7 +33,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y autoconf flex bison g++ make python3
+      - run: sudo apt-get update && sudo apt-get install -y autoconf flex libfl-dev bison g++ make python3 help2man
       - uses: actions/cache@v4
         id: verilator-cache
         with:
