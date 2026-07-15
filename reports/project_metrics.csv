@@ -1,25 +1,28 @@
 metric,value
 procedural_smoke,1 / 1
 smoke_checks,38 / 38
-named_regression,25 / 25
+named_regression,30 / 30
 seeded_random_regression,100 / 100
 systemc_model_selftest,7 / 7
-trace_replay,60 events / 0 errors
-full_model_replay,125 / 125
-assertion_classes_instances,27 classes / 112 elaborated instances
+trace_replay,68 events / 0 errors
+full_model_replay,130 / 130
+assertion_classes_instances,29 classes / 120 elaborated instances
 functional_coverage,56 / 56
 interaction_coverage,46 / 46
-raw_design_line_coverage,85.88%
-reviewed_executable_line_coverage,93.25%
-raw_design_branch_coverage,95.19%
-raw_design_toggle_coverage,68.84%
-uvm_runtime,4 / 4
+advanced_interaction_coverage,24 / 24
+raw_design_line_coverage,86.05%
+reviewed_executable_line_coverage,93.35%
+raw_design_branch_coverage,95.00%
+raw_design_toggle_coverage,69.71%
+uvm_runtime,8 / 8
 integrated_cdc,4 / 4
 bounded_property_groups,1 / 1
-solver_formal_groups,2 / 2
+solver_formal_groups,14 / 14
 mutation_detection,6 / 6
-performance_points,112 / 112
-release_readiness,14 / 14
-synthesized_blocks,2 / 3
+illegal_target_checker_sensitivity,5 / 5
+performance_points,120 / 120
+sustained_qos_points,72 / 72
+release_readiness,18 / 18
+synthesized_blocks,2 / 2
 gate_level_smoke,1 / 1
 full_fabric_synthesis_equivalence,SKIP (installed Yosys frontend limitation)

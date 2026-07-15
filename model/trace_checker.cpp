@@ -8,6 +8,7 @@
 #include <regex>
 #include <string>
 #include <tuple>
+#include <vector>
 
 static long field(const std::string& line, const std::string& name, long fallback = -1) {
   std::regex pattern("\\\"" + name + "\\\":(-?[0-9]+)");
@@ -61,6 +62,11 @@ int sc_main(int argc, char** argv) {
   std::queue<WriteRoute> source_routes[4];
   std::queue<std::tuple<long,uint64_t,long>> source_writes[4];
   std::map<std::pair<long,long>, uint64_t> memory;
+  std::vector<Key> target_read_order[4];
+  std::vector<Key> target_write_response_order[4];
+  std::map<long, Key> active_target_read;
+  std::map<long, Key> active_target_write_response;
+  long reorder_policy=0,reorder_target=1;
   unsigned events=0, requests=0, responses=0, grants=0, beats=0, memory_checks=0, errors=0;
   std::string line;
   while (std::getline(input,line)) {
@@ -68,7 +74,9 @@ int sc_main(int argc, char** argv) {
     const auto event=event_name(line);
     const long master=field(line,"master");
     const long id=field(line,"id");
-    if (event=="aw" || event=="ar") {
+    if(event=="config") {
+      reorder_policy=field(line,"reorder_policy",0); reorder_target=field(line,"reorder_target",1);
+    } else if (event=="aw" || event=="ar") {
       ++requests;
       Request req{master,id,field(line,"target"),field(line,"address"),field(line,"len"),
                   field(line,"size"),field(line,"legal"),field(line,"legal") ? 0 : 3};
@@ -88,6 +96,7 @@ int sc_main(int argc, char** argv) {
       const Key key{master,id,kind};
       if(!pending.count(key) || pending[key].target!=field(line,"target") || !pending[key].legal) ++errors;
       if(kind=='w' && pending.count(key)) target_writes[field(line,"target")].push({pending[key],0});
+      if(kind=='r' && pending.count(key)) target_read_order[field(line,"target")].push_back(key);
     } else if(event=="w") {
       if(source_routes[master].empty()) { ++errors; continue; }
       auto& route=source_routes[master].front();
@@ -119,19 +128,65 @@ int sc_main(int argc, char** argv) {
         memory[mem_key]=value;
       }
       route.beat++;
-      if(last) target_writes[target].pop();
+      if(last) {
+        target_write_response_order[target].push_back({route.request.master,route.request.id,'w'});
+        target_writes[target].pop();
+      }
+    } else if (event=="target_b_schedule") {
+      const Key key{master,id,'w'};
+      const long target=field(line,"target");
+      if(target>=0 && target<4 && !target_write_response_order[target].empty()) {
+        const size_t choice=(target==reorder_target && reorder_policy==1 && target_write_response_order[target].size()>=2)
+          ? target_write_response_order[target].size()-1 : 0;
+        if(target_write_response_order[target][choice]!=key) ++errors;
+        active_target_write_response[target]=key;
+        target_write_response_order[target].erase(target_write_response_order[target].begin()+choice);
+      } else ++errors;
     } else if (event=="target_b") {
       const Key key{master,id,'w'};
       if(!accepted.count(key) || !accepted[key].legal) ++errors;
+      const long target=field(line,"target");
+      if(active_target_write_response.count(target)) {
+        if(active_target_write_response[target]!=key) ++errors;
+        active_target_write_response.erase(target);
+      } else if(target>=0 && target<4 && !target_write_response_order[target].empty()) {
+        const size_t choice=(target==reorder_target && reorder_policy==1 && target_write_response_order[target].size()>=2)
+          ? target_write_response_order[target].size()-1 : 0;
+        if(target_write_response_order[target][choice]!=key) ++errors;
+        target_write_response_order[target].erase(target_write_response_order[target].begin()+choice);
+      } else ++errors;
     } else if (event=="b") {
       ++responses;
       const Key key{master,id,'w'};
       if (!pending.count(key) || field(line,"resp")!=pending[key].response) ++errors;
       pending.erase(key);
+    } else if(event=="target_r_schedule") {
+      const Key key{master,id,'r'};
+      const long target=field(line,"target");
+      if(active_target_read.count(target)) {
+        if(active_target_read[target]!=key) ++errors;
+      } else if(target>=0 && target<4 && !target_read_order[target].empty()) {
+        const size_t choice=(target==reorder_target && reorder_policy==1 && target_read_order[target].size()>=2)
+          ? target_read_order[target].size()-1 : 0;
+        if(target_read_order[target][choice]!=key) ++errors;
+        active_target_read[target]=key;
+        target_read_order[target].erase(target_read_order[target].begin()+choice);
+      } else ++errors;
     } else if(event=="target_r") {
       ++beats;
       const Key key{master,id,'r'};
       if(!accepted.count(key) || !accepted[key].legal) ++errors;
+      const long target=field(line,"target");
+      if(!active_target_read.count(target)) {
+        if(target<0 || target>3 || target_read_order[target].empty()) ++errors;
+        else {
+          const size_t choice=(target==reorder_target && reorder_policy==1 && target_read_order[target].size()>=2)
+            ? target_read_order[target].size()-1 : 0;
+          if(target_read_order[target][choice]!=key) ++errors;
+          active_target_read[target]=key;
+          target_read_order[target].erase(target_read_order[target].begin()+choice);
+        }
+      } else if(active_target_read[target]!=key) ++errors;
       if(accepted.count(key)) {
         auto& req=accepted[key];
         // Source-side R is logged first in a cycle, so the remaining count may already be decremented.
@@ -146,6 +201,7 @@ int sc_main(int argc, char** argv) {
           ++memory_checks;
         }
       }
+      if(field(line,"last")==1) active_target_read.erase(target);
     } else if (event=="r") {
       const Key key{master,id,'r'};
       if(!pending.count(key)) { ++errors; continue; }
@@ -163,12 +219,20 @@ int sc_main(int argc, char** argv) {
       for(auto& queue:target_writes) while(!queue.empty()) queue.pop();
       for(auto& queue:source_routes) while(!queue.empty()) queue.pop();
       for(auto& queue:source_writes) while(!queue.empty()) queue.pop();
+      for(auto& queue:target_read_order) queue.clear();
+      for(auto& queue:target_write_response_order) queue.clear();
+      active_target_read.clear();
+      active_target_write_response.clear();
     }
   }
   errors+=pending.size();
   for(const auto& queue:target_writes) errors+=queue.size();
   for(const auto& queue:source_routes) errors+=queue.size();
   for(const auto& queue:source_writes) errors+=queue.size();
+  for(const auto& queue:target_read_order) errors+=queue.size();
+  for(const auto& queue:target_write_response_order) errors+=queue.size();
+  errors+=active_target_read.size();
+  errors+=active_target_write_response.size();
   std::cout << "TRACE_RESULT|events=" << events << "|requests=" << requests
             << "|grants=" << grants << "|beats=" << beats << "|responses=" << responses
             << "|memory_checks=" << memory_checks << "|errors=" << errors << '\n';

@@ -26,19 +26,30 @@ The repository reports measured results separately from the full release targets
 
 | Evidence | Current executable scope |
 | --- | --- |
-| Named integrated regression | `25 / 25` routing, burst, error, same-master outstanding-ID, contention, reset, backpressure, and CDC scenarios |
+| Named integrated regression | `30 / 30` routing, burst, error, queued response reordering, contention, reset, backpressure, and CDC scenarios |
 | Seeded-random stress | `100 / 100` passing manifest-driven runs with reproducible knobs and logs |
 | Protocol/data smoke checks | `38 / 38` passing |
 | SystemC/TLM model self-test | `7 / 7` passing |
-| Full trace replay | `125 / 125` named/random traces checked for routing, beats, IDs, responses, and memory effects |
-| Assertions | `27` named classes and `112` elaborated protocol/CDC instances |
-| UVM runtime | `4 / 4` real phase-based tests on Verilator `v5.048`, including multi-ID traffic |
-| Functional / interaction coverage | `56 / 56` bins and `46 / 46` trace-derived crosses |
-| Verilator line coverage | `85.88%` raw design RTL; `93.25%` reviewed executable RTL with listed exclusions |
+| Full trace replay | `130 / 130` named/random traces checked for routing, scheduled response order, beats, IDs, and memory effects |
+| Assertions | `29` named classes and `120` elaborated protocol/CDC instances |
+| UVM runtime | `8 / 8` real phase-based tests on Verilator `v5.048`, including four-agent contention, reorder, aging, and reset |
+| Functional / interaction coverage | `56 / 56` bins, `46 / 46` canonical crosses, and `24 / 24` advanced concurrent-activity crosses |
+| Verilator coverage | `86.05%` raw / `93.35%` reviewed line; `95.00%` raw branch; `69.71%` raw toggle |
 | Mutation detection | `6 / 6` injected faults detected |
-| Integrated CDC / performance | `4 / 4` clock ratios with reset/FIFO stress; `112` per-master characterization points |
-| Solver formal | `2 / 2` Yosys-SMT proof/cover groups plus bounded simulation checks |
+| Illegal-target checker sensitivity | `5 / 5` malformed response cases detected as expected failures |
+| Integrated CDC / performance | `4 / 4` clock ratios; `120` diagnostic and `72` sustained QoS/fairness result rows |
+| Solver formal | `15 / 15` required proof, bounded-safety, reachability-cover, and mutation-counterexample groups |
 | Implementation proxy | `2 / 2` parseable blocks synthesize and QoS gate smoke passes; full fabric remains frontend-limited |
+
+## Measured Visual Evidence
+
+![QoS fairness under sustained contention](docs/images/qos_fairness_dashboard.svg)
+
+The sustained dashboard compares equal-QoS, mixed-QoS, and aging-override service fairness across `0/25/50/75%` target backpressure. [The full performance report](docs/performance.md) retains per-master throughput, p50/p95/max latency, service share, maximum service gap, and override counts.
+
+![Legal out-of-order response sequence](docs/images/out_of_order_response_waveform.svg)
+
+The response trace accepts IDs `1,2,3,4` and completes them as `2,4,3,1`; [the debug diary](docs/bug_diary.md) explains the ownership bug exposed while enabling queued targets and how the target-side AW owner FIFO fixed it.
 
 ## Supported AXI4 Subset
 
@@ -58,8 +69,8 @@ This is a deliberately constrained AXI4 implementation, not protocol certificati
 ```bash
 make lint
 make model-check
-VERILATOR_UVM=/path/to/verilator-v5.048/bin/verilator make uvm-smoke
-VERILATOR_UVM=/path/to/verilator-v5.048/bin/verilator make release-check
+make uvm-regress       # auto-detects ~/verilator-v5.048 when present
+make release-check
 ```
 
 Optional evidence:
@@ -67,6 +78,8 @@ Optional evidence:
 ```bash
 make regress
 make random-stress
+make advanced-cross-coverage
+make target-protocol-negative
 make code-coverage
 make formal-prove
 make mutation-check
@@ -94,4 +107,4 @@ make release-check       # executable release gate; fails if any measured criter
 
 ## Tool and Signoff Boundaries
 
-The default flow uses Verilator, SystemC 2.3.4, Python, C++, Yosys, Yosys-SMTBMC, and Z3. UVM uses Verilator `v5.048` and `uvm-verilator` commit `656f20d087370a7c742e00188d20bbf30fa95339`; older local builds are not accepted as equivalent runtime evidence. Results are open-source engineering evidence, not AXI certification, CDC signoff, timing signoff, or commercial formal closure. Solver-backed proof currently covers the QoS arbiter; full-fabric formal, synthesis, and sequential equivalence remain explicitly frontend-limited. Unexecuted work is labeled `PARTIAL` or `SKIP`, never as passing evidence.
+The default flow uses Verilator, SystemC 2.3.4, Python, C++, Yosys, Yosys-SMTBMC, and Z3. UVM uses Verilator `v5.048` and `uvm-verilator` commit `656f20d087370a7c742e00188d20bbf30fa95339`; older local builds are not accepted as equivalent runtime evidence. Results are open-source engineering evidence, not AXI certification, CDC signoff, timing signoff, or commercial formal closure. Solver evidence covers the QoS arbiter plus reduced asynchronous-FIFO, active-ID, local-error, and route-ownership harnesses; full-fabric formal, synthesis, and sequential equivalence remain explicitly frontend-limited. Unexecuted work is labeled `PARTIAL` or `SKIP`, never as passing evidence.

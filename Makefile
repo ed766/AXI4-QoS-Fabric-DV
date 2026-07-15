@@ -1,6 +1,6 @@
 PYTHON ?= python3
 VERILATOR ?= verilator
-VERILATOR_UVM ?= verilator
+VERILATOR_UVM ?= $(if $(wildcard $(HOME)/verilator-v5.048/bin/verilator),$(HOME)/verilator-v5.048/bin/verilator,verilator)
 UVM_HOME ?= $(HOME)/uvm-verilator/src
 BUILD := build
 REPORTS := reports
@@ -9,7 +9,7 @@ SIM := sim/axi_memory_model.sv sim/assertions/axi4_fabric_assertions.sv sim/tb_a
 
 .PHONY: lint smoke regress model-test model-check model-replay uvm-check-env uvm-smoke uvm-regress formal-env \
         random-manifest random-stress functional-coverage code-coverage formal-prove mutation-check \
-        async-cdc-check performance-sweep synth-check equivalence-check gate-level-smoke \
+        advanced-cross-coverage target-protocol-negative async-cdc-check performance-sweep visual-reports synth-check equivalence-check gate-level-smoke \
         project-check release-check reports clean
 
 lint:
@@ -52,9 +52,10 @@ uvm-check-env:
 	@$(VERILATOR_UVM) --version | head -1
 
 uvm-smoke: uvm-check-env
-	$(PYTHON) scripts/run_uvm.py --tests uvm_single_route_test,uvm_qos_contention_test,uvm_error_security_test,uvm_multi_outstanding_test
+	VERILATOR_UVM="$(VERILATOR_UVM)" UVM_HOME="$(UVM_HOME)" $(PYTHON) scripts/run_uvm.py --tests uvm_single_route_test,uvm_qos_contention_test,uvm_error_security_test,uvm_multi_outstanding_test
 
-uvm-regress: uvm-smoke
+uvm-regress: uvm-check-env
+	VERILATOR_UVM="$(VERILATOR_UVM)" UVM_HOME="$(UVM_HOME)" $(PYTHON) scripts/run_uvm.py --tests uvm_single_route_test,uvm_qos_contention_test,uvm_error_security_test,uvm_multi_outstanding_test,uvm_multi_id_reorder_test,uvm_four_master_contention_test,uvm_qos_starvation_override_test,uvm_reset_with_outstanding_test
 
 random-manifest:
 	$(PYTHON) scripts/gen_random_manifest.py --count 100
@@ -65,6 +66,12 @@ random-stress: random-manifest $(BUILD)/smoke/Vtb_axi4_qos_fabric
 functional-coverage: regress random-stress formal-prove
 	$(PYTHON) scripts/gen_coverage.py
 
+advanced-cross-coverage: $(BUILD)/smoke/Vtb_axi4_qos_fabric
+	$(PYTHON) scripts/run_advanced_coverage.py
+
+target-protocol-negative: $(BUILD)/smoke/Vtb_axi4_qos_fabric
+	$(PYTHON) scripts/run_target_protocol_negative.py
+
 code-coverage:
 	$(PYTHON) scripts/run_code_coverage.py
 
@@ -73,6 +80,10 @@ async-cdc-check: smoke
 
 performance-sweep: smoke
 	$(PYTHON) scripts/gen_performance.py
+	$(PYTHON) scripts/gen_qos_dashboard.py
+
+visual-reports: regress
+	$(PYTHON) scripts/gen_reorder_waveform.py
 
 synth-check:
 	$(PYTHON) scripts/run_synthesis.py
@@ -95,7 +106,7 @@ mutation-check:
 reports: functional-coverage performance-sweep
 	$(PYTHON) scripts/gen_reports.py metrics
 
-project-check: lint model-test model-check uvm-smoke functional-coverage async-cdc-check performance-sweep reports
+project-check: lint model-test model-check uvm-regress functional-coverage advanced-cross-coverage target-protocol-negative async-cdc-check performance-sweep visual-reports reports
 
 release-check: project-check model-replay code-coverage mutation-check synth-check equivalence-check gate-level-smoke
 	$(PYTHON) scripts/check_release_status.py

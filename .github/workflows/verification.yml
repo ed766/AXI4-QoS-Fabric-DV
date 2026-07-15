@@ -6,7 +6,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y verilator yosys g++ make python3 python3-venv libsystemc-dev
-      - run: make lint model-check functional-coverage performance-sweep
+      - run: make lint model-check functional-coverage advanced-cross-coverage target-protocol-negative performance-sweep
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,7 +44,7 @@ jobs:
           make -j2
           make install
       - run: git clone https://github.com/chipsalliance/uvm-verilator.git /tmp/uvm-verilator && git -C /tmp/uvm-verilator checkout 656f20d087370a7c742e00188d20bbf30fa95339
-      - run: make uvm-smoke VERILATOR_UVM=$HOME/.local/verilator-v5.048/bin/verilator UVM_HOME=/tmp/uvm-verilator/src
+      - run: make uvm-regress VERILATOR_UVM=$HOME/.local/verilator-v5.048/bin/verilator UVM_HOME=/tmp/uvm-verilator/src
       - uses: actions/upload-artifact@v4
         if: always()
         with:

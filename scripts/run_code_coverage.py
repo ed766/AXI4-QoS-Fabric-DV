@@ -9,7 +9,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from run_regression import NAMED_SCENARIOS
+from run_regression import NAMED_SCENARIOS, named_scenario_args
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "coverage"
@@ -48,11 +48,10 @@ def main() -> int:
 
     for index, scenario in enumerate(NAMED_SCENARIOS):
         database = BUILD / f"named_{index:02d}.dat"
-        stall = "75" if scenario.endswith("75") else "25" if scenario.endswith("25") else "0"
         env = os.environ.copy()
         env["VERILATOR_COVERAGE_FILENAME"] = str(database)
         subprocess.run([
-            str(binary), f"+TEST_NAME={scenario}", "+TRACE_FILE=/dev/null", f"+STALL_PERCENT={stall}"
+            str(binary), f"+TEST_NAME={scenario}", "+TRACE_FILE=/dev/null", *named_scenario_args(scenario)
         ], cwd=ROOT, env=env, check=True, stdout=subprocess.DEVNULL)
         databases.append(database)
 

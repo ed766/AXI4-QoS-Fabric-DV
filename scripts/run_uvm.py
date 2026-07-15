@@ -35,11 +35,21 @@ def main()->int:
     ap=argparse.ArgumentParser(); ap.add_argument('--tests',required=True); args=ap.parse_args()
     binary=build(); rows=[]; logs=BUILD/'logs'; logs.mkdir(exist_ok=True)
     for test in args.tests.split(','):
-        result=subprocess.run([str(binary),f'+UVM_TESTNAME={test}','+UVM_VERBOSITY=UVM_LOW'],cwd=ROOT,text=True,capture_output=True,timeout=120)
+        extra=[]
+        if test in ('uvm_multi_id_reorder_test','uvm_four_master_contention_test'):
+            extra=['+REORDER_POLICY=1','+REORDER_TARGET=1','+REORDER_DELAY=8']
+        elif test=='uvm_reset_with_outstanding_test':
+            extra=['+REORDER_POLICY=2','+REORDER_TARGET=1','+REORDER_DELAY=30']
+        result=subprocess.run([str(binary),f'+UVM_TESTNAME={test}','+UVM_VERBOSITY=UVM_LOW',*extra],cwd=ROOT,text=True,capture_output=True,timeout=120)
         text=result.stdout+'\n'+result.stderr; (logs/f'{test}.log').write_text(text)
         err,fatal=counts(text,'ERROR'),counts(text,'FATAL')
-        rows.append({'test':test,'status':'PASS' if result.returncode==0 and err==0 and fatal==0 else 'FAIL',
+        activity=re.search(r'\[SCOREBOARD_ACTIVITY\]\s+requests=(\d+)\s+responses=(\d+)\s+mismatches=(\d+)',text)
+        requests=int(activity.group(1)) if activity else 0
+        responses=int(activity.group(2)) if activity else 0
+        mismatches=int(activity.group(3)) if activity else 1
+        rows.append({'test':test,'status':'PASS' if result.returncode==0 and err==0 and fatal==0 and requests>0 and responses>0 and mismatches==0 else 'FAIL',
                      'uvm_info':counts(text,'INFO'),'uvm_warning':counts(text,'WARNING'),'uvm_error':err,'uvm_fatal':fatal,
+                     'scoreboard_requests':requests,'scoreboard_responses':responses,'scoreboard_mismatches':mismatches,
                      'log':str((logs/f'{test}.log').relative_to(ROOT))})
     REPORT.parent.mkdir(exist_ok=True)
     with REPORT.open('w',newline='') as f:

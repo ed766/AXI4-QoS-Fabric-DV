@@ -1,0 +1,6 @@
+fault,expected_status,detected,detector,log
+early_rlast,FAIL,YES,assertion_or_checker,build/target_protocol_negative/early_rlast.log
+late_rlast,FAIL,YES,assertion_or_checker,build/target_protocol_negative/late_rlast.log
+unknown_response_id,FAIL,YES,assertion_or_checker,build/target_protocol_negative/unknown_response_id.log
+duplicate_response,FAIL,YES,assertion_or_checker,build/target_protocol_negative/duplicate_response.log
+malformed_write_id,FAIL,YES,assertion_or_checker,build/target_protocol_negative/malformed_write_id.log

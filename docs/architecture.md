@@ -11,7 +11,7 @@ The design is a shared crossbar-style AXI4 fabric, not a packet-switched NoC. Re
 | S2 | `0x2000_0000-0x2000_FFFF` | Secure/error-capable target |
 | S3 | `0x3000_0000-0x3000_FFFF` | Five-channel asynchronous bridge |
 
-AW acceptance pushes a route record into a per-initiator FIFO. Since AXI4 has no WID, the W channel follows AW order and locks one initiator to a target through `WLAST`. R routing locks one target burst to an initiator through `RLAST`. Duplicate active IDs are backpressured.
+AW acceptance pushes a route record into a per-initiator FIFO and an owner record into a per-target FIFO. Since AXI4 has no WID, the target-side owner FIFO preserves downstream AW order and locks one initiator through the matching `WLAST`. R routing locks one selected target burst to an initiator through `RLAST`. Duplicate active IDs are backpressured.
 
 ## Arbitration and Security
 
@@ -23,4 +23,4 @@ S3 crosses independent clocks through Gray-pointer AW, W, B, AR, and R FIFOs. In
 
 ## Outstanding Transactions
 
-Read and write active-ID bitmaps permit four distinct IDs per initiator. The verification environment issues four reads and four writes from one initiator before retirement, checks duplicate-active-ID backpressure, and observes a later ID completing before an earlier asynchronous-target ID. Target IDs widen to `{initiator,id}` and are independently checked at request and response boundaries.
+Read and write active-ID bitmaps permit four distinct IDs per initiator. Verification targets queue multiple requests and select in-order, reverse-order, fixed-delay, or seeded-random response policy. Completion may reorder only across distinct IDs; responses remain ordered within an ID and read beats remain contiguous. Target IDs widen to `{initiator,id}` and are independently checked at request, scheduler, and response boundaries.

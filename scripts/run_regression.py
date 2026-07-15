@@ -21,7 +21,16 @@ NAMED_SCENARIOS = [
     "contention_two", "contention_four", "outstanding_ids", "write_burst_lock", "aw_delayed_w",
     "channel_backpressure_25", "channel_backpressure_75", "async_target", "reset_recovery",
     "local_error_matrix",
+    "same_target_reorder", "multi_master_reorder", "simultaneous_rw_reorder",
+    "response_backpressure_queue", "w_before_aw",
 ]
+
+
+def named_scenario_args(name: str) -> list[str]:
+    stall = "75" if name.endswith("75") else "25" if name.endswith("25") else "0"
+    reorder = (["+REORDER_POLICY=1", "+REORDER_TARGET=1", "+REORDER_DELAY=8"]
+               if "reorder" in name or name == "response_backpressure_queue" else [])
+    return [f"+STALL_PERCENT={stall}", *reorder]
 
 
 def run(binary: Path, name: str, args: list[str], timeout: int = 45, artifact_name: str | None = None) -> dict[str, str]:
@@ -66,8 +75,7 @@ def write_csv(path: Path, rows: list[dict[str, str]]) -> None:
 def run_named(binary: Path) -> int:
     rows = []
     for name in NAMED_SCENARIOS:
-        stall = "75" if name.endswith("75") else "25" if name.endswith("25") else "0"
-        rows.append(run(binary, name, [f"+STALL_PERCENT={stall}"]))
+        rows.append(run(binary, name, named_scenario_args(name)))
     write_csv(NAMED_REPORT, rows)
     passed = sum(row["status"] == "PASS" for row in rows)
     print(f"REGRESSION_RESULT|passed={passed}|total={len(rows)}|report={NAMED_REPORT.relative_to(ROOT)}")

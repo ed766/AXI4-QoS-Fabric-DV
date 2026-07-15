@@ -6,7 +6,8 @@ module axi_memory_model #(
     parameter int WORDS = 8192,
     parameter int TARGET_INDEX = 0,
     parameter logic [ADDR_W-1:0] BASE_ADDR = '0,
-    parameter bit ERROR_ENABLE = 0
+    parameter bit ERROR_ENABLE = 0,
+    parameter int MAX_OUTSTANDING = 8
 ) (
     input logic clk,
     input logic rst_n,
@@ -35,35 +36,78 @@ module axi_memory_model #(
     output logic [1:0] rresp,
     output logic rlast
 );
+  typedef struct {
+    logic [ID_W-1:0] id;
+    logic [ADDR_W-1:0] addr;
+    logic [8:0] beats;
+    logic [2:0] size;
+    logic [1:0] resp;
+    integer age;
+    integer serial;
+  } transaction_t;
+
   logic [DATA_W-1:0] mem [0:WORDS-1];
-  logic write_active, read_active;
-  logic [ADDR_W-1:0] write_addr, read_addr;
-  logic [8:0] write_beats, read_beats;
-  logic [2:0] write_size, read_size;
-  logic write_error, read_error;
+  transaction_t read_queue[$];
+  transaction_t write_queue[$];
+  transaction_t write_responses[$];
+  transaction_t active_read;
+  integer read_beat;
+  integer write_beat;
   integer stall_percent;
   integer cycle_count;
+  integer reorder_policy;
+  integer reorder_target;
+  integer reorder_delay;
+  integer reorder_seed;
+  integer target_fault;
+  integer fault_target;
+  integer sequence_count;
   logic stall_now;
+  logic duplicate_b_pending;
+  logic [ID_W-1:0] duplicate_bid;
+  logic [1:0] duplicate_bresp;
 
   function automatic int word_index(input logic [ADDR_W-1:0] addr);
     return int'((addr - BASE_ADDR) >> $clog2(DATA_W/8)) % WORDS;
   endfunction
 
+  function automatic bit selected_target();
+    return TARGET_INDEX == reorder_target;
+  endfunction
+
   initial begin
     stall_percent = 0;
+    reorder_policy = 0;
+    reorder_target = 1;
+    reorder_delay = 6;
+    reorder_seed = 1;
+    target_fault = 0;
+    fault_target = 1;
     void'($value$plusargs("STALL_PERCENT=%d", stall_percent));
+    void'($value$plusargs("REORDER_POLICY=%d", reorder_policy));
+    void'($value$plusargs("REORDER_TARGET=%d", reorder_target));
+    void'($value$plusargs("REORDER_DELAY=%d", reorder_delay));
+    void'($value$plusargs("REORDER_SEED=%d", reorder_seed));
+    void'($value$plusargs("TARGET_FAULT=%d", target_fault));
+    void'($value$plusargs("FAULT_TARGET=%d", fault_target));
     for (int i = 0; i < WORDS; i++) mem[i] = 64'hA500_0000_0000_0000 ^ DATA_W'(i);
   end
 
   assign stall_now = stall_percent != 0 && ((cycle_count * 37 + TARGET_INDEX * 17) % 100) < stall_percent;
-  assign awready = !write_active && !bvalid && !stall_now;
-  assign wready = write_active && !bvalid && !stall_now;
-  assign arready = !read_active && !stall_now;
+  assign awready = write_queue.size() < MAX_OUTSTANDING && !stall_now;
+  assign wready = write_queue.size() != 0 && !stall_now;
+  assign arready = read_queue.size() < MAX_OUTSTANDING && !stall_now;
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always @(posedge clk or negedge rst_n) begin : target_behavior
+    transaction_t request;
+    transaction_t selected;
+    integer choice;
+    integer random_value;
+    bit response_ready;
     if (!rst_n) begin
-      write_active <= 1'b0;
-      read_active <= 1'b0;
+      read_queue.delete();
+      write_queue.delete();
+      write_responses.delete();
       bvalid <= 1'b0;
       rvalid <= 1'b0;
       bid <= '0;
@@ -72,66 +116,134 @@ module axi_memory_model #(
       rdata <= '0;
       rresp <= '0;
       rlast <= 1'b0;
-      write_addr <= '0;
-      read_addr <= '0;
-      write_beats <= '0;
-      read_beats <= '0;
-      write_size <= '0;
-      read_size <= '0;
-      write_error <= 1'b0;
-      read_error <= 1'b0;
+      active_read = '{default:'0};
+      read_beat = 0;
+      write_beat = 0;
       cycle_count <= 0;
+      sequence_count = 0;
+      duplicate_b_pending <= 1'b0;
+      duplicate_bid <= '0;
+      duplicate_bresp <= '0;
     end else begin
       cycle_count <= cycle_count + 1;
+      for (int i = 0; i < read_queue.size(); i++) read_queue[i].age++;
+      for (int i = 0; i < write_responses.size(); i++) write_responses[i].age++;
+
       if (awvalid && awready) begin
-        write_active <= 1'b1;
-        write_addr <= awaddr;
-        write_beats <= {1'b0, awlen} + 1'b1;
-        write_size <= awsize;
-        bid <= awid;
-        write_error <= ERROR_ENABLE && awaddr[15:12] == 4'hF;
-        if (awburst != 2'b01) write_error <= 1'b1;
+        request.id = awid;
+        request.addr = awaddr;
+        request.beats = {1'b0, awlen} + 1'b1;
+        request.size = awsize;
+        request.resp = (ERROR_ENABLE && awaddr[15:12] == 4'hF) || awburst != 2'b01 ? 2'b10 : 2'b00;
+        request.age = 0;
+        request.serial = sequence_count++;
+        write_queue.push_back(request);
       end
+
       if (wvalid && wready) begin
-        if (!write_error) begin
+        if (write_queue[0].resp == 2'b00) begin
           for (int byte_lane = 0; byte_lane < DATA_W/8; byte_lane++) begin
             if (wstrb[byte_lane])
-              mem[word_index(write_addr)][byte_lane*8 +: 8] <= wdata[byte_lane*8 +: 8];
+              mem[word_index(write_queue[0].addr + ADDR_W'(write_beat << write_queue[0].size))][byte_lane*8 +: 8]
+                <= wdata[byte_lane*8 +: 8];
           end
         end
-        write_addr <= write_addr + (ADDR_W'(1) << write_size);
-        write_beats <= write_beats - 1'b1;
-        if (wlast || write_beats == 1) begin
-          write_active <= 1'b0;
-          bvalid <= 1'b1;
-          bresp <= write_error ? 2'b10 : 2'b00;
+        if (wlast || write_beat == int'(write_queue[0].beats)-1) begin
+          selected = write_queue.pop_front();
+          selected.age = 0;
+          write_responses.push_back(selected);
+          write_beat = 0;
+        end else begin
+          write_beat++;
         end
       end
-      if (bvalid && bready) bvalid <= 1'b0;
 
       if (arvalid && arready) begin
-        read_active <= 1'b1;
-        read_addr <= araddr;
-        read_beats <= {1'b0, arlen} + 1'b1;
-        read_size <= arsize;
-        rid <= arid;
-        read_error <= ERROR_ENABLE && araddr[15:12] == 4'hF;
-        rvalid <= 1'b1;
-        rdata <= mem[word_index(araddr)];
-        rresp <= ERROR_ENABLE && araddr[15:12] == 4'hF ? 2'b10 : 2'b00;
-        rlast <= arlen == 0;
-        if (arburst != 2'b01) rresp <= 2'b10;
-      end else if (rvalid && rready) begin
-        if (read_beats == 1) begin
+        request.id = arid;
+        request.addr = araddr;
+        request.beats = {1'b0, arlen} + 1'b1;
+        request.size = arsize;
+        request.resp = (ERROR_ENABLE && araddr[15:12] == 4'hF) || arburst != 2'b01 ? 2'b10 : 2'b00;
+        request.age = 0;
+        request.serial = sequence_count++;
+        read_queue.push_back(request);
+      end
+
+      if (bvalid && bready) begin
+        if (target_fault == 4 && TARGET_INDEX == fault_target && !duplicate_b_pending) begin
+          duplicate_b_pending <= 1'b1;
+          duplicate_bid <= bid;
+          duplicate_bresp <= bresp;
+        end
+        bvalid <= 1'b0;
+      end
+      if (!bvalid) begin
+        if (duplicate_b_pending) begin
+          bvalid <= 1'b1;
+          bid <= duplicate_bid;
+          bresp <= duplicate_bresp;
+          duplicate_b_pending <= 1'b0;
+        end else if (write_responses.size() != 0) begin
+          choice = 0;
+          response_ready = 1'b1;
+          if (selected_target() && reorder_policy == 1) begin
+            response_ready = write_responses.size() >= 2 || write_responses[0].age >= reorder_delay;
+            choice = write_responses.size()-1;
+          end else if (selected_target() && reorder_policy == 2) begin
+            response_ready = write_responses[0].age >= reorder_delay;
+          end else if (selected_target() && reorder_policy == 3) begin
+            response_ready = write_responses[0].age >= reorder_delay || write_responses.size() >= 2;
+            random_value = (reorder_seed * 1103515245 + cycle_count * 12345) & 32'h7fff_ffff;
+            choice = random_value % write_responses.size();
+          end
+          if (response_ready) begin
+            selected = write_responses[choice];
+            write_responses.delete(choice);
+            bvalid <= 1'b1;
+            bid <= (target_fault == 5 && TARGET_INDEX == fault_target) ? selected.id ^ ID_W'(1) : selected.id;
+            bresp <= selected.resp;
+          end
+        end
+      end
+
+      if (rvalid && rready) begin
+        if (read_beat == int'(active_read.beats)-1) begin
           rvalid <= 1'b0;
-          read_active <= 1'b0;
           rlast <= 1'b0;
+          read_beat = 0;
         end else begin
-          read_addr <= read_addr + (ADDR_W'(1) << read_size);
-          read_beats <= read_beats - 1'b1;
-          rdata <= mem[word_index(read_addr + (ADDR_W'(1) << read_size))];
-          rresp <= read_error ? 2'b10 : 2'b00;
-          rlast <= read_beats == 2;
+          read_beat++;
+          rdata <= mem[word_index(active_read.addr + ADDR_W'(read_beat << active_read.size))];
+          rresp <= active_read.resp;
+          rlast <= read_beat == int'(active_read.beats)-1;
+          if (target_fault == 1 && TARGET_INDEX == fault_target && active_read.beats > 1) rlast <= 1'b1;
+          if (target_fault == 2 && TARGET_INDEX == fault_target && read_beat == int'(active_read.beats)-1) rlast <= 1'b0;
+        end
+      end
+      if (!rvalid && read_queue.size() != 0) begin
+        choice = 0;
+        response_ready = 1'b1;
+        if (selected_target() && reorder_policy == 1) begin
+          response_ready = read_queue.size() >= 2 || read_queue[0].age >= reorder_delay;
+          choice = read_queue.size()-1;
+        end else if (selected_target() && reorder_policy == 2) begin
+          response_ready = read_queue[0].age >= reorder_delay;
+        end else if (selected_target() && reorder_policy == 3) begin
+          response_ready = read_queue[0].age >= reorder_delay || read_queue.size() >= 2;
+          random_value = (reorder_seed * 1664525 + cycle_count * 1013904223) & 32'h7fff_ffff;
+          choice = random_value % read_queue.size();
+        end
+        if (response_ready) begin
+          active_read = read_queue[choice];
+          read_queue.delete(choice);
+          read_beat = 0;
+          rvalid <= 1'b1;
+          rid <= (target_fault == 3 && TARGET_INDEX == fault_target) ? active_read.id ^ ID_W'(1) : active_read.id;
+          rdata <= mem[word_index(active_read.addr)];
+          rresp <= active_read.resp;
+          rlast <= active_read.beats == 1;
+          if (target_fault == 1 && TARGET_INDEX == fault_target && active_read.beats > 1) rlast <= 1'b1;
+          if (target_fault == 2 && TARGET_INDEX == fault_target && active_read.beats == 1) rlast <= 1'b0;
         end
       end
     end

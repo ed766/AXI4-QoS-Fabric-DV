@@ -14,7 +14,7 @@ make release-check
 | --- | --- |
 | Did the tests pass? | `reports/release_readiness.csv` and `reports/regression_summary.csv` |
 | Was randomized traffic actually executed? | `reports/random_regress_summary.csv` |
-| What is covered? | `docs/coverage.md` and `reports/cross_coverage.csv` |
+| What is covered? | `docs/coverage.md`, canonical crosses, and `reports/advanced_cross_coverage.csv` |
 | Is code coverage reviewed honestly? | `docs/code_coverage.md` and `reports/code_coverage_exclusions.csv` |
 | Is UVM real or compile-only? | `docs/uvm_status.md` and `reports/uvm_runtime_summary.csv` |
 | Are checkers sensitive to bugs? | `reports/mutation_summary.csv` |
@@ -22,6 +22,7 @@ make release-check
 | Which assertions protect the architecture? | `docs/assertions.md` |
 | Was solver-backed formal executed? | `reports/formal_summary.csv` |
 | What real bug was found? | `docs/bug_diary.md` |
+| Is legal reordering distinguished from bad target behavior? | out-of-order case study and `reports/target_protocol_negative_summary.csv` |
 | What implementation evidence ran? | `reports/synthesis_summary.csv` and `reports/gate_level_summary.csv` |
 | How are requirements traced? | `docs/traceability.md` |
 | What performance tradeoff was measured? | `docs/performance.md` |

@@ -1,9 +1,9 @@
 scope,covered_lines,total_lines,line_percent,status
-design_rtl,432,503,85.88,PASS
-reviewed_executable_rtl,304,326,93.25,PASS
-fabric_core,349,399,87.47,PASS
+design_rtl,438,509,86.05,PASS
+reviewed_executable_rtl,309,331,93.35,PASS
+fabric_core,355,405,87.65,PASS
 cdc_bridge,83,104,79.81,PASS
-verification_collateral,434,504,86.11,PASS
-all_instrumented,866,1007,86.00,PASS
-raw_design_branch,99,104,95.19,PASS
-raw_design_toggle,1701,2471,68.84,PASS
+verification_collateral,542,719,75.38,PASS
+all_instrumented,980,1228,79.80,PASS
+raw_design_branch,95,100,95.00,PASS
+raw_design_toggle,1756,2519,69.71,PASS

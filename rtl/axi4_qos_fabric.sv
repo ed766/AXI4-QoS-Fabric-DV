@@ -98,6 +98,9 @@ module axi4_qos_fabric #(
   localparam int ID_COUNT = 1 << ID_W;
   localparam int RPTR_W = $clog2(ROUTE_DEPTH);
   localparam int RCNT_W = $clog2(ROUTE_DEPTH + 1);
+  localparam int TARGET_ROUTE_DEPTH = NUM_MASTERS * ROUTE_DEPTH;
+  localparam int TWPTR_W = $clog2(TARGET_ROUTE_DEPTH);
+  localparam int TWCNT_W = $clog2(TARGET_ROUTE_DEPTH + 1);
   localparam logic [SIDX_W:0] LOCAL_TARGET = {1'b1, {SIDX_W{1'b0}}};
 
   logic [NUM_MASTERS-1:0][SIDX_W-1:0] aw_target, ar_target;
@@ -119,8 +122,10 @@ module axi4_qos_fabric #(
   logic [NUM_MASTERS-1:0][ID_W-1:0] local_rid;
   logic [NUM_MASTERS-1:0][8:0] local_rbeats;
 
-  logic [NUM_SLAVES-1:0] w_lock;
-  logic [NUM_SLAVES-1:0][MIDX_W-1:0] w_owner;
+  logic [NUM_SLAVES-1:0][TARGET_ROUTE_DEPTH-1:0][MIDX_W-1:0] target_w_owner_q;
+  logic [NUM_SLAVES-1:0][TWPTR_W-1:0] target_w_wptr, target_w_rptr;
+  logic [NUM_SLAVES-1:0][TWCNT_W-1:0] target_w_count;
+  logic [NUM_SLAVES-1:0] target_w_push, target_w_pop;
   logic [NUM_MASTERS-1:0] r_lock;
   logic [NUM_MASTERS-1:0][SIDX_W-1:0] r_owner;
 
@@ -296,21 +301,14 @@ module axi4_qos_fabric #(
     m_wstrb = '0;
     m_wlast = '0;
     route_pop = '{default:1'b0};
+    target_w_pop = '0;
     for (int si = 0; si < NUM_SLAVES; si++) begin
       logic selected;
       logic [MIDX_W-1:0] owner;
-      selected = w_lock[si];
-      owner = w_owner[si];
-      if (!selected) begin
-        for (int mi = 0; mi < NUM_MASTERS; mi++) begin
-          if (!selected && route_count[mi] != 0
-              && !route_target[mi][route_rptr[mi]][SIDX_W]
-              && route_target[mi][route_rptr[mi]][SIDX_W-1:0] == SIDX_W'(si)) begin
-            selected = 1'b1;
-            owner = MIDX_W'(mi);
-          end
-        end
-      end
+      owner = target_w_owner_q[si][target_w_rptr[si]];
+      selected = target_w_count[si] != 0 && route_count[owner] != 0
+        && !route_target[owner][route_rptr[owner]][SIDX_W]
+        && route_target[owner][route_rptr[owner]][SIDX_W-1:0] == SIDX_W'(si);
       if (selected) begin
         m_wvalid[si] = s_wvalid[owner];
         m_wdata[si] = s_wdata[owner];
@@ -321,8 +319,10 @@ module axi4_qos_fabric #(
 `ifndef BUG_EARLY_W_UNLOCK
             && s_wlast[owner]
 `endif
-        )
+        ) begin
           route_pop[owner] = 1'b1;
+          target_w_pop[si] = 1'b1;
+        end
       end
     end
     for (int mi = 0; mi < NUM_MASTERS; mi++) begin
@@ -401,12 +401,15 @@ module axi4_qos_fabric #(
   always_comb begin
     route_push = '{default:1'b0};
     route_push_target = '0;
+    target_w_push = '0;
     for (int mi = 0; mi < NUM_MASTERS; mi++) begin
       if (s_awvalid[mi] && s_awready[mi]) begin
         route_push[mi] = 1'b1;
         route_push_target[mi] = aw_legal[mi] ? {1'b0, aw_target[mi]} : LOCAL_TARGET;
       end
     end
+    for (int si = 0; si < NUM_SLAVES; si++)
+      target_w_push[si] = m_awvalid[si] && m_awready[si];
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -421,8 +424,10 @@ module axi4_qos_fabric #(
       local_r_active <= '0;
       local_rid <= '0;
       local_rbeats <= '0;
-      w_lock <= '0;
-      w_owner <= '0;
+      target_w_owner_q <= '0;
+      target_w_wptr <= '0;
+      target_w_rptr <= '0;
+      target_w_count <= '0;
       r_lock <= '0;
       r_owner <= '0;
     end else begin
@@ -471,18 +476,18 @@ module axi4_qos_fabric #(
       end
 
       for (int si = 0; si < NUM_SLAVES; si++) begin
-        if (!w_lock[si]) begin
-          for (int mi = 0; mi < NUM_MASTERS; mi++) begin
-            if (route_count[mi] != 0 && !route_target[mi][route_rptr[mi]][SIDX_W]
-                && route_target[mi][route_rptr[mi]][SIDX_W-1:0] == SIDX_W'(si)
-                && s_wvalid[mi] && s_wready[mi] && !s_wlast[mi]) begin
-              w_lock[si] <= 1'b1;
-              w_owner[si] <= MIDX_W'(mi);
-            end
-          end
-        end else if (s_wvalid[w_owner[si]] && s_wready[w_owner[si]] && s_wlast[w_owner[si]]) begin
-          w_lock[si] <= 1'b0;
+        if (target_w_push[si]) begin
+          target_w_owner_q[si][target_w_wptr[si]] <= aw_gidx[si];
+          target_w_wptr[si] <= target_w_wptr[si] + 1'b1;
         end
+        if (target_w_pop[si]) begin
+          target_w_rptr[si] <= target_w_rptr[si] + 1'b1;
+        end
+        case ({target_w_push[si], target_w_pop[si]})
+          2'b10: target_w_count[si] <= target_w_count[si] + 1'b1;
+          2'b01: target_w_count[si] <= target_w_count[si] - 1'b1;
+          default: target_w_count[si] <= target_w_count[si];
+        endcase
       end
 
       for (int mi = 0; mi < NUM_MASTERS; mi++) begin

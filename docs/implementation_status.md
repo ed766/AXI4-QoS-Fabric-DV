@@ -5,11 +5,12 @@
 - Synthesizable 4x4 read/write fabric with ID widening, four active IDs per initiator, AW route FIFOs, burst-locked W/R routing, QoS priority, equal-class round robin, and 32-opportunity starvation override.
 - Local malformed/security `DECERR` behavior and downstream error propagation.
 - Five-channel Gray-pointer asynchronous bridge exercised at four source/target clock ratios.
-- `25 / 25` named scenarios, `100 / 100` seeded-random runs, `56 / 56` functional bins, and `46 / 46` event-derived crosses.
-- Real UVM runtime: four active master agents and `4 / 4` phase-based tests on Verilator `v5.048`, including multi-ID traffic.
-- Independent SystemC/TLM self-test and `125 / 125` normalized trace replays checking bursts and memory effects.
-- `27` named assertion classes (`112` elaborated protocol/CDC instances), bounded checks, two solver proof/cover groups, and `6 / 6` mutation detections.
-- `85.88%` raw design line coverage and `93.25%` reviewed executable line coverage with explicit exclusions.
+- `30 / 30` named scenarios, `100 / 100` seeded-random runs, `56 / 56` functional bins, `46 / 46` canonical crosses, and `24 / 24` advanced crosses.
+- Real UVM runtime: four active master agents, virtual sequences, and `8 / 8` phase-based tests on Verilator `v5.048`.
+- Independent SystemC/TLM self-test and `130 / 130` normalized trace replays checking target response schedules, bursts, IDs, and memory effects.
+- `29` named assertion classes (`120` elaborated protocol/CDC instances), `15 / 15` required formal groups, and `6 / 6` RTL mutation detections.
+- `5 / 5` malformed-target expected failures validate checker sensitivity without claiming illegal-target recovery.
+- `86.05%` raw design line, `93.35%` reviewed executable line, `95.00%` raw branch, and `69.71%` raw toggle coverage.
 
 `make project-check` refreshes the core evidence. `make release-check` additionally enforces code-coverage and mutation thresholds and writes `reports/release_readiness.csv`.
 

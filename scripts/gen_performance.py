@@ -59,9 +59,10 @@ def main()->int:
       highlights.append((workload,mean0,mean75,mean75-mean0,max(int(r['age_override_events']) for r in subset)))
     (ROOT/'docs/performance.md').write_text(
       '# QoS and Contention Performance\n\nBehavioral Verilator measurements across identical named workloads. Values are verification/performance proxies, not silicon timing.\n\n'
-      '| Workload | Mean latency at 0% | Mean latency at 75% | Added latency | Aging overrides |\n| --- | ---: | ---: | ---: | ---: |\n'+
+      '## Short-Scenario Diagnostics\n\n'
+      '| Workload | Accepted-to-response mean at 0% | Accepted-to-response mean at 75% | Delta | Aging overrides |\n| --- | ---: | ---: | ---: | ---: |\n'+
       ''.join(f'| `{name}` | {low:.2f} | {high:.2f} | {delta:.2f} | {overrides} |\n' for name,low,high,delta,overrides in highlights)+
-      '\nThe CSV additionally reports per-master p50/p95/max latency, arbitration wait, accepted throughput, and service share for 0/25/50/75% backpressure. Equal-QoS, mixed-QoS, aging override, multi-outstanding, and asynchronous-target traffic are measured separately.\n')
+      '\nThese short tests diagnose paths rather than estimate sustained QoS. Target throttling can reduce accepted-to-response latency by reducing queued occupancy; sustained offered-throughput and fairness conclusions use the longer workload below. The CSV retains per-master p50/p95/max latency, arbitration wait, accepted throughput, and service share.\n')
     print(f'PERFORMANCE_RESULT|points={len(rows)}|workloads={len(WORKLOADS)}|status=PASS')
     return 0
 if __name__=='__main__': raise SystemExit(main())

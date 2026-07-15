@@ -31,6 +31,10 @@ def metrics():
     def ratio(path,status_col):
         if not path.exists(): return 'NOT_RUN'
         rows=list(csv.DictReader(path.open())); return f"{sum(r[status_col] in ('PASS','HIT','YES') for r in rows)} / {len(rows)}"
+    def executable_ratio(path):
+        if not path.exists(): return 'NOT_RUN'
+        rows=[row for row in csv.DictReader(path.open()) if row.get('status')!='SKIP']
+        return f"{sum(row.get('status')=='PASS' for row in rows)} / {len(rows)}"
     smoke=(ROOT/'build'/'smoke.log').read_text() if (ROOT/'build'/'smoke.log').exists() else ''
     smoke_match=re.search(r'DV_RESULT\|.*?checks=(\d+)\|errors=(\d+)',smoke)
     trace=(ROOT/'build'/'trace_check.log').read_text() if (ROOT/'build'/'trace_check.log').exists() else ''
@@ -44,9 +48,10 @@ def metrics():
       ('systemc_model_selftest','7 / 7'),
       ('trace_replay',f"{trace_match.group(1)} events / {trace_match.group(2)} errors" if trace_match else 'NOT_RUN'),
       ('full_model_replay',ratio(REPORTS/'model_replay_summary.csv','status')),
-      ('assertion_classes_instances','27 classes / 112 elaborated instances'),
+      ('assertion_classes_instances','29 classes / 120 elaborated instances'),
       ('functional_coverage',ratio(REPORTS/'functional_coverage.csv','status')),
       ('interaction_coverage',ratio(REPORTS/'cross_coverage.csv','status')),
+      ('advanced_interaction_coverage',ratio(REPORTS/'advanced_cross_coverage.csv','status')),
       ('raw_design_line_coverage',code('design_rtl')),
       ('reviewed_executable_line_coverage',code('reviewed_executable_rtl')),
       ('raw_design_branch_coverage',code('raw_design_branch')),
@@ -54,11 +59,13 @@ def metrics():
       ('uvm_runtime',ratio(REPORTS/'uvm_runtime_summary.csv','status')),
       ('integrated_cdc',ratio(REPORTS/'cdc_summary.csv','status')),
       ('bounded_property_groups',f"{sum(r['mode']=='bounded_verilator' and r['status']=='PASS' for r in csv.DictReader((REPORTS/'formal_summary.csv').open()))} / 1" if (REPORTS/'formal_summary.csv').exists() else 'NOT_RUN'),
-      ('solver_formal_groups',f"{sum(r['mode'].startswith('Yosys_SMT') and r['status']=='PASS' for r in csv.DictReader((REPORTS/'formal_summary.csv').open()))} / 2" if (REPORTS/'formal_summary.csv').exists() else 'NOT_RUN'),
+      ('solver_formal_groups',f"{sum(r['mode'].startswith('Yosys_SMT') and r['status']=='PASS' for r in csv.DictReader((REPORTS/'formal_summary.csv').open()))} / 14" if (REPORTS/'formal_summary.csv').exists() else 'NOT_RUN'),
       ('mutation_detection',ratio(REPORTS/'mutation_summary.csv','detected')),
+      ('illegal_target_checker_sensitivity',ratio(REPORTS/'target_protocol_negative_summary.csv','detected')),
       ('performance_points',ratio(REPORTS/'performance_summary.csv','status')),
+      ('sustained_qos_points',ratio(REPORTS/'qos_fairness_summary.csv','status')),
       ('release_readiness',ratio(REPORTS/'release_readiness.csv','status')),
-      ('synthesized_blocks',ratio(REPORTS/'synthesis_summary.csv','status')),
+      ('synthesized_blocks',executable_ratio(REPORTS/'synthesis_summary.csv')),
       ('gate_level_smoke',ratio(REPORTS/'gate_level_summary.csv','status')),
       ('full_fabric_synthesis_equivalence','SKIP (installed Yosys frontend limitation)')]
     DOCS.mkdir(exist_ok=True); REPORTS.mkdir(exist_ok=True)

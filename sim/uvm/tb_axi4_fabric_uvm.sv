@@ -62,6 +62,8 @@ module tb_axi4_fabric_uvm;
 
   always_ff @(posedge clk) if(!rst_n) g_first_target1_master<=-1;
     else if(g_first_target1_master<0 && m_arvalid[1] && m_arready[1]) g_first_target1_master<=m_arid[1][5:4];
+  always_ff @(posedge clk) if(!rst_n) g_age_override_seen<=0;
+    else if(|mon_ar_age_override || |mon_aw_age_override) g_age_override_seen<=1;
 
   always_comb begin
     g_awready=s_awready; g_wready=s_wready; g_bvalid=s_bvalid; g_bid=s_bid; g_bresp=s_bresp;

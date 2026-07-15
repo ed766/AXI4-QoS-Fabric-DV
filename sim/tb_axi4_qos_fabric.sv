@@ -56,22 +56,30 @@ module tb_axi4_qos_fabric;
   integer read_order [NM][1<<IW];
   integer write_order [NM][1<<IW];
   integer configured_stall_percent;
+  integer configured_reorder_policy;
+  integer configured_reorder_target;
   logic age_override_seen;
+  logic [NS-1:0] prev_target_rvalid,prev_target_bvalid;
 
   axi4_qos_fabric #(.SECURE_ONLY(4'b0100)) dut (.*);
   axi4_fabric_assertions sva (.*);
 
   initial begin
     configured_stall_percent=0;
+    configured_reorder_policy=0;
+    configured_reorder_target=1;
     void'($value$plusargs("STALL_PERCENT=%d",configured_stall_percent));
+    void'($value$plusargs("REORDER_POLICY=%d",configured_reorder_policy));
+    void'($value$plusargs("REORDER_TARGET=%d",configured_reorder_target));
     response_serial=0;
+    prev_target_rvalid='0; prev_target_bvalid='0;
     for(int m=0;m<NM;m++) for(int id=0;id<(1<<IW);id++) begin
       read_done[m][id]=0; write_done[m][id]=0; read_order[m][id]=-1; write_order[m][id]=-1;
     end
     if (!$value$plusargs("TRACE_FILE=%s", trace_path)) trace_path = "build/traces/smoke.jsonl";
     trace_fd = $fopen(trace_path, "w");
     if (trace_fd == 0) $fatal(1,"unable to open trace file %s",trace_path);
-    $fdisplay(trace_fd,"{\"event\":\"config\",\"cycle\":0,\"stall_percent\":%0d,\"s3_half_ps\":%0d}",configured_stall_percent,s3_half_ps);
+    $fdisplay(trace_fd,"{\"event\":\"config\",\"cycle\":0,\"stall_percent\":%0d,\"s3_half_ps\":%0d,\"reorder_policy\":%0d,\"reorder_target\":%0d}",configured_stall_percent,s3_half_ps,configured_reorder_policy,configured_reorder_target);
   end
 
   always_ff @(posedge clk) begin
@@ -105,6 +113,10 @@ module tb_axi4_qos_fabric;
           $fdisplay(trace_fd,"{\"event\":\"w\",\"cycle\":%0d,\"master\":%0d,\"data\":\"%016h\",\"strb\":%0d,\"last\":%0d}",$time/10,m,s_wdata[m],s_wstrb[m],s_wlast[m]);
       end
       for (int s=0; s<NS; s++) begin
+        if (m_rvalid[s] && !prev_target_rvalid[s])
+          $fdisplay(trace_fd,"{\"event\":\"target_r_schedule\",\"cycle\":%0d,\"target\":%0d,\"master\":%0d,\"id\":%0d}",$time/10,s,m_rid[s][5:4],m_rid[s][3:0]);
+        if (m_bvalid[s] && !prev_target_bvalid[s])
+          $fdisplay(trace_fd,"{\"event\":\"target_b_schedule\",\"cycle\":%0d,\"target\":%0d,\"master\":%0d,\"id\":%0d}",$time/10,s,m_bid[s][5:4],m_bid[s][3:0]);
         if (m_awvalid[s] && m_awready[s])
           $fdisplay(trace_fd,"{\"event\":\"aw_grant\",\"cycle\":%0d,\"target\":%0d,\"master\":%0d,\"id\":%0d,\"qos\":%0d,\"age_override\":%0d}",
             $time/10,s,m_awid[s][5:4],m_awid[s][3:0],m_awqos[s],mon_aw_age_override[s]);
@@ -119,6 +131,8 @@ module tb_axi4_qos_fabric;
           $fdisplay(trace_fd,"{\"event\":\"target_r\",\"cycle\":%0d,\"target\":%0d,\"master\":%0d,\"id\":%0d,\"resp\":%0d,\"last\":%0d,\"data\":\"%016h\"}",$time/10,s,m_rid[s][5:4],m_rid[s][3:0],m_rresp[s],m_rlast[s],m_rdata[s]);
       end
     end
+    prev_target_rvalid <= rst_n ? m_rvalid : '0;
+    prev_target_bvalid <= rst_n ? m_bvalid : '0;
   end
 
   always @(negedge rst_n)
@@ -250,11 +264,14 @@ module tb_axi4_qos_fabric;
     @(negedge clk); s_awvalid[m]=0;
   endtask
 
-  task automatic stream_ar(input int m,input int count,input logic[3:0] qos,input logic[AW-1:0] base);
+  task automatic stream_ar(input int m,input int count,input logic[3:0] qos,input logic[AW-1:0] base,
+      input bit log_perf_offer);
     @(negedge clk);
     s_arvalid[m]=1; s_arlen[m]=0; s_arsize[m]=3; s_arburst[m]=1; s_arprot[m]=0; s_arqos[m]=qos;
     for(int n=0;n<count;n++) begin
       s_arid[m]=IW'(n+2); s_araddr[m]=base+AW'(n*8);
+      if(log_perf_offer)
+        $fdisplay(trace_fd,"{\"event\":\"perf_offer\",\"cycle\":%0d,\"master\":%0d,\"id\":%0d,\"qos\":%0d}",$time/10,m,IW'(n+2),qos);
       do @(posedge clk); while(!s_arready[m]);
       @(negedge clk);
     end
@@ -280,6 +297,12 @@ module tb_axi4_qos_fabric;
     while (write_done[m][id] == prior && timeout < 500) begin @(posedge clk); timeout++; end
     check_cond(timeout < 500,$sformatf("write completion m%0d id%0d",m,id));
   endtask
+
+  function automatic int read_completion_total(input int master);
+    int total=0;
+    for(int id=0;id<(1<<IW);id++) total+=read_done[master][id];
+    return total;
+  endfunction
 
   task automatic scenario_smoke();
     logic [1:0] resp;
@@ -372,7 +395,9 @@ module tb_axi4_qos_fabric;
     logic[1:0] low_resp;
     fork
       issue_read(0,1,32'h1000_6000,1,0,0,0,0,low_resp);
-      stream_ar(1,35,15,32'h1000_6100);
+      stream_ar(1,40,15,32'h1000_6100,0);
+      stream_ar(2,40,15,32'h1000_7100,0);
+      stream_ar(3,40,15,32'h1000_8100,0);
     join
     repeat(20) @(posedge clk);
     check_cond(low_resp==0,"starved request eventually serviced");
@@ -405,6 +430,151 @@ module tb_axi4_qos_fabric;
     check_cond($countones(dut.wr_id_active[0])==4,"four same-master write IDs active");
     send_w(0,2,64'h5000); send_w(0,2,64'h6000); send_w(0,2,64'h7000); send_w(0,2,64'h8000);
     for (int id=0;id<4;id++) wait_write_id(0,IW'(id+5),before_w[id]);
+  endtask
+
+  task automatic scenario_same_target_reorder();
+    int before_r[4]; int before_w[3];
+    for (int id=0;id<4;id++) before_r[id]=read_done[0][id+1];
+    s_rready[0]=0;
+    for (int id=0;id<4;id++) submit_ar(0,IW'(id+1),32'h1000_7000+AW'(id*32),1,4'(id));
+    check_cond($countones(dut.rd_id_active[0])==4,"four IDs queued to one target");
+    repeat(4) @(posedge clk); @(negedge clk); s_rready[0]=1;
+    for (int id=0;id<4;id++) wait_read_id(0,IW'(id+1),before_r[id]);
+    check_cond(read_order[0][4] < read_order[0][1],"one target completed distinct read IDs out of order");
+
+    for (int id=0;id<3;id++) before_w[id]=write_done[0][id+8];
+    s_bready[0]=0;
+    for (int id=0;id<3;id++) begin
+      submit_aw(0,IW'(id+8),32'h1000_7800+AW'(id*32),1,4'(id));
+      send_w(0,1,64'h9000+DW'(id));
+    end
+    repeat(4) @(posedge clk); @(negedge clk); s_bready[0]=1;
+    for (int id=0;id<3;id++) wait_write_id(0,IW'(id+8),before_w[id]);
+    check_cond(write_order[0][9] < write_order[0][8],"one target completed distinct write IDs out of order");
+  endtask
+
+  task automatic scenario_multi_master_reorder();
+    int prior[4];
+    for (int m=0;m<4;m++) begin prior[m]=read_done[m][m+1]; s_rready[m]=0; end
+    fork
+      submit_ar(0,1,32'h1000_8000,1,1);
+      submit_ar(1,2,32'h1000_8020,1,2);
+      submit_ar(2,3,32'h1000_8040,1,3);
+      submit_ar(3,4,32'h1000_8060,1,4);
+    join
+    repeat(4) @(posedge clk); @(negedge clk); s_rready='1;
+    for (int m=0;m<4;m++) wait_read_id(m,IW'(m+1),prior[m]);
+    check_cond(read_order[2][3] < read_order[3][4],"multi-master response ownership survives target reordering");
+  endtask
+
+  task automatic scenario_simultaneous_rw_reorder();
+    logic [1:0] read_resp[2]; logic [1:0] write_resp[2];
+    fork
+      issue_read(0,1,32'h1000_8800,1,3,0,0,0,read_resp[0]);
+      issue_read(1,2,32'h1000_8820,1,3,0,0,0,read_resp[1]);
+      issue_write(2,3,32'h1000_8840,1,3,0,64'hcafe_0003,write_resp[0]);
+      issue_write(3,4,32'h1000_8860,1,3,0,64'hcafe_0004,write_resp[1]);
+    join
+    check_cond(read_resp[0]==0 && read_resp[1]==0,"simultaneous queued reads completed");
+    check_cond(write_resp[0]==0 && write_resp[1]==0,"simultaneous queued writes completed");
+  endtask
+
+  task automatic scenario_response_backpressure_queue();
+    int prior_r[3]; int prior_w[3]; int queue_count;
+    if(!$value$plusargs("QUEUE_COUNT=%d",queue_count)) queue_count=3;
+    for(int id=0;id<queue_count;id++) begin
+      prior_r[id]=read_done[1][id+1]; prior_w[id]=write_done[1][id+5];
+    end
+    s_rready[1]=0; s_bready[1]=0;
+    for(int id=0;id<queue_count;id++) submit_ar(1,IW'(id+1),32'h1000_9000+AW'(id*32),1,2);
+    for(int id=0;id<queue_count;id++) begin
+      submit_aw(1,IW'(id+5),32'h1000_9800+AW'(id*32),1,2);
+      send_w(1,1,64'hd000+DW'(id));
+    end
+    repeat(12) @(posedge clk);
+    check_cond(s_rvalid[1] && s_bvalid[1],"read and write responses held under backpressure");
+    @(negedge clk); s_rready[1]=1; s_bready[1]=1;
+    $fdisplay(trace_fd,"{\"event\":\"response_queue_observation\",\"cycle\":%0d,\"count\":%0d,\"r_blocked\":1,\"b_blocked\":1}",$time/10,queue_count);
+    for(int id=0;id<queue_count;id++) begin
+      wait_read_id(1,IW'(id+1),prior_r[id]); wait_write_id(1,IW'(id+5),prior_w[id]);
+    end
+  endtask
+
+  task automatic scenario_advanced_depth_policy();
+    int depth; int prior[4];
+    if(!$value$plusargs("OUTSTANDING_DEPTH=%d",depth)) depth=4;
+    s_rready[0]=0;
+    for(int id=0;id<depth;id++) begin
+      prior[id]=read_done[0][id+1];
+      submit_ar(0,IW'(id+1),32'h1000_c000+AW'(id*32),1,1);
+    end
+    repeat(10) @(posedge clk); @(negedge clk); s_rready[0]=1;
+    for(int id=0;id<depth;id++) wait_read_id(0,IW'(id+1),prior[id]);
+    $fdisplay(trace_fd,"{\"event\":\"depth_policy_observation\",\"cycle\":%0d,\"depth\":%0d,\"policy\":%0d}",$time/10,depth,configured_reorder_policy);
+  endtask
+
+  task automatic scenario_advanced_qos_matrix();
+    int contenders; int qos_class; logic [1:0] resp[4];
+    if(!$value$plusargs("CONTENDERS=%d",contenders)) contenders=4;
+    if(!$value$plusargs("QOS_CLASS=%d",qos_class)) qos_class=15;
+    fork
+      if(contenders>0) issue_read(0,1,32'h1000_d000,1,4'(qos_class),0,0,0,resp[0]);
+      if(contenders>1) issue_read(1,2,32'h1000_d020,1,4'(qos_class),0,0,0,resp[1]);
+      if(contenders>2) issue_read(2,3,32'h1000_d040,1,4'(qos_class),0,0,0,resp[2]);
+      if(contenders>3) issue_read(3,4,32'h1000_d060,1,4'(qos_class),0,0,0,resp[3]);
+    join
+    for(int m=0;m<contenders;m++) check_cond(resp[m]==0,$sformatf("QoS matrix master %0d",m));
+    $fdisplay(trace_fd,"{\"event\":\"qos_contention_observation\",\"cycle\":%0d,\"qos_class\":%0d,\"contenders\":%0d}",$time/10,qos_class,contenders);
+  endtask
+
+  task automatic scenario_performance_sustained();
+    int master_count; int policy; int requests; int prior_total[4]; int timeout; int qos[4];
+    if(!$value$plusargs("PERF_MASTERS=%d",master_count)) master_count=4;
+    if(!$value$plusargs("PERF_POLICY=%d",policy)) policy=0;
+    if(!$value$plusargs("PERF_REQUESTS=%d",requests)) requests=48;
+    for(int m=0;m<4;m++) begin
+      prior_total[m]=read_completion_total(m);
+      case(policy)
+        0: qos[m]=8;
+        1: qos[m]=m*5;
+        default: qos[m]=(m==0)?0:15;
+      endcase
+    end
+    fork
+      if(master_count>0) stream_ar(0,requests,4'(qos[0]),32'h1000_2000,1);
+      if(master_count>1) stream_ar(1,requests,4'(qos[1]),32'h1000_3000,1);
+      if(master_count>2) stream_ar(2,requests,4'(qos[2]),32'h1000_4000,1);
+      if(master_count>3) stream_ar(3,requests,4'(qos[3]),32'h1000_5000,1);
+    join
+    timeout=0;
+    while(timeout<10000) begin
+      bit complete=1;
+      for(int m=0;m<master_count;m++) if(read_completion_total(m)<prior_total[m]+requests) complete=0;
+      if(complete) break;
+      @(posedge clk); timeout++;
+    end
+    check_cond(timeout<10000,"sustained QoS workload completed");
+    $fdisplay(trace_fd,"{\"event\":\"perf_config\",\"cycle\":%0d,\"masters\":%0d,\"policy\":%0d,\"requests_per_master\":%0d}",$time/10,master_count,policy,requests);
+  endtask
+
+  task automatic scenario_w_before_aw();
+    int prior; logic [1:0] resp;
+    prior=write_done[0][12];
+    @(negedge clk); s_wdata[0]=64'hface_cafe_1234_5678; s_wstrb[0]='1; s_wlast[0]=1; s_wvalid[0]=1;
+    repeat(3) begin @(posedge clk); check_cond(!s_wready[0],"W backpressured before AW route exists"); end
+    submit_aw(0,12,32'h1000_a000,1,1);
+    do @(posedge clk); while(!s_wready[0]);
+    @(negedge clk); s_wvalid[0]=0;
+    wait_write_id(0,12,prior);
+    issue_read(0,13,32'h1000_a000,1,1,0,64'hface_cafe_1234_5678,1,resp);
+    check_cond(resp==0,"W-before-AW transfer completed after route acceptance");
+  endtask
+
+  task automatic scenario_target_protocol_fault();
+    logic [1:0] resp;
+    issue_read(0,1,32'h1000_b000,4,0,0,0,0,resp);
+    issue_write(0,2,32'h1000_b100,2,0,0,64'hbad0_0000,resp);
+    repeat(20) @(posedge clk);
   endtask
 
   task automatic scenario_reset_recovery();
@@ -477,6 +647,15 @@ module tb_axi4_qos_fabric;
       "starvation_override": scenario_starvation_override();
       "contention_four": scenario_parallel(4,0);
       "outstanding_ids": scenario_outstanding_ids();
+      "same_target_reorder": scenario_same_target_reorder();
+      "multi_master_reorder": scenario_multi_master_reorder();
+      "simultaneous_rw_reorder": scenario_simultaneous_rw_reorder();
+      "response_backpressure_queue": scenario_response_backpressure_queue();
+      "w_before_aw": scenario_w_before_aw();
+      "target_protocol_fault": scenario_target_protocol_fault();
+      "advanced_depth_policy": scenario_advanced_depth_policy();
+      "advanced_qos_matrix": scenario_advanced_qos_matrix();
+      "performance_sustained": scenario_performance_sustained();
       "write_burst_lock","aw_delayed_w": scenario_parallel(4,1);
       "channel_backpressure_25","channel_backpressure_75": scenario_target_matrix();
       "reset_recovery","reset_outstanding": scenario_reset_recovery();

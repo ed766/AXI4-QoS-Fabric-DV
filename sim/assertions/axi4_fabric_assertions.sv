@@ -60,14 +60,20 @@ module axi4_fabric_assertions #(
     input logic [NUM_SLAVES-1:0][1:0] m_rresp
 );
   localparam int ID_COUNT=1<<ID_W;
+  localparam int TARGET_ID_COUNT=1<<TID_W;
+  localparam int WRITE_TRACK_DEPTH=16;
   logic [NUM_MASTERS-1:0][ID_COUNT-1:0] accepted_reads,accepted_writes;
-  logic [NUM_SLAVES-1:0][8:0] write_beats_left,read_beats_left;
-  logic [NUM_SLAVES-1:0] write_tracking,read_tracking;
+  logic [NUM_SLAVES-1:0][TARGET_ID_COUNT-1:0][8:0] read_beats_by_id;
+  logic [NUM_SLAVES-1:0][TARGET_ID_COUNT-1:0] read_id_tracking;
+  logic [NUM_SLAVES-1:0][WRITE_TRACK_DEPTH-1:0][8:0] write_len_fifo;
+  logic [NUM_SLAVES-1:0][3:0] write_len_wptr,write_len_rptr;
+  logic [NUM_SLAVES-1:0][4:0] write_len_count;
 
   always_ff @(posedge clk or negedge rst_n) begin : p_architectural_scoreboard
     if(!rst_n) begin
       accepted_reads<='0; accepted_writes<='0;
-      write_beats_left<='0; read_beats_left<='0; write_tracking<='0; read_tracking<='0;
+      read_beats_by_id<='0; read_id_tracking<='0; write_len_fifo<='0;
+      write_len_wptr<='0; write_len_rptr<='0; write_len_count<='0;
     end else begin
       for(int m=0;m<NUM_MASTERS;m++) begin
         if(s_awvalid[m]&&s_awready[m]) begin
@@ -90,17 +96,32 @@ module axi4_fabric_assertions #(
         a_read_outstanding_bound: assert($countones(accepted_reads[m])<=4);
       end
       for(int s=0;s<NUM_SLAVES;s++) begin
-        if(m_awvalid[s]&&m_awready[s]) begin write_tracking[s]<=1'b1; write_beats_left[s]<={1'b0,m_awlen[s]}+1'b1; end
-        if(m_wvalid[s]&&m_wready[s]&&write_tracking[s]) begin
-          a_wlast_matches_awlen: assert(m_wlast[s]==(write_beats_left[s]==1));
-          write_beats_left[s]<=write_beats_left[s]-1'b1;
-          if(m_wlast[s]) write_tracking[s]<=1'b0;
+        if(m_awvalid[s]&&m_awready[s]) begin
+          a_write_length_queue_not_full: assert(int'(write_len_count[s]) < WRITE_TRACK_DEPTH);
+          write_len_fifo[s][write_len_wptr[s]]<={1'b0,m_awlen[s]}+1'b1;
+          write_len_wptr[s]<=write_len_wptr[s]+1'b1;
         end
-        if(m_arvalid[s]&&m_arready[s]) begin read_tracking[s]<=1'b1; read_beats_left[s]<={1'b0,m_arlen[s]}+1'b1; end
-        if(m_rvalid[s]&&m_rready[s]&&read_tracking[s]) begin
-          a_rlast_matches_arlen: assert(m_rlast[s]==(read_beats_left[s]==1));
-          read_beats_left[s]<=read_beats_left[s]-1'b1;
-          if(m_rlast[s]) read_tracking[s]<=1'b0;
+        if(m_wvalid[s]&&m_wready[s]) begin
+          a_w_requires_accepted_aw: assert(write_len_count[s]!=0);
+          a_wlast_matches_awlen: assert(m_wlast[s]==(write_len_fifo[s][write_len_rptr[s]]==1));
+          if(m_wlast[s]) write_len_rptr[s]<=write_len_rptr[s]+1'b1;
+          else write_len_fifo[s][write_len_rptr[s]]<=write_len_fifo[s][write_len_rptr[s]]-1'b1;
+        end
+        case ({m_awvalid[s]&&m_awready[s],m_wvalid[s]&&m_wready[s]&&m_wlast[s]})
+          2'b10: write_len_count[s]<=write_len_count[s]+1'b1;
+          2'b01: write_len_count[s]<=write_len_count[s]-1'b1;
+          default: write_len_count[s]<=write_len_count[s];
+        endcase
+        if(m_arvalid[s]&&m_arready[s]) begin
+          a_target_read_id_not_duplicate: assert(!read_id_tracking[s][m_arid[s]]);
+          read_id_tracking[s][m_arid[s]]<=1'b1;
+          read_beats_by_id[s][m_arid[s]]<={1'b0,m_arlen[s]}+1'b1;
+        end
+        if(m_rvalid[s]&&m_rready[s]) begin
+          a_r_requires_target_ar: assert(read_id_tracking[s][m_rid[s]]);
+          a_rlast_matches_arlen: assert(m_rlast[s]==(read_beats_by_id[s][m_rid[s]]==1));
+          read_beats_by_id[s][m_rid[s]]<=read_beats_by_id[s][m_rid[s]]-1'b1;
+          if(m_rlast[s]) read_id_tracking[s][m_rid[s]]<=1'b0;
         end
         if(m_bvalid[s]&&m_bready[s]) a_b_target_prefix_valid: assert(int'(m_bid[s][ID_W +: TID_W-ID_W])<NUM_MASTERS);
         if(m_rvalid[s]&&m_rready[s]) a_r_target_prefix_valid: assert(int'(m_rid[s][ID_W +: TID_W-ID_W])<NUM_MASTERS);

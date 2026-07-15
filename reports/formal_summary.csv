@@ -1,5 +1,17 @@
 property_group,mode,depth,status,runtime_seconds,note
 qos_grant_safety,bounded_verilator,33,PASS,NA,three executable arbiter invariants
-qos_arbiter_safety,Yosys_SMT_induction,40,PASS,0.122,"grant ownership, availability, and highest-QoS safety"
-qos_arbiter_reachability,Yosys_SMT_cover,80,PASS,NA,contention and aging override covers reachable
-full_fabric_solver,Yosys_SMT,NA,SKIP,NA,requires a frontend supporting multidimensional SystemVerilog ports
+qos_arbiter_safety,Yosys_SMT_prove,40,PASS,0.124,leaf proof/cover with explicit reachability
+qos_arbiter_reachability,Yosys_SMT_cover,80,PASS,0.112,leaf proof/cover with explicit reachability
+async_fifo_safety,Yosys_SMT_bmc,16,PASS,0.821,solver-backed bounded safety
+async_fifo_reachability,Yosys_SMT_cover,20,PASS,0.074,leaf proof/cover with explicit reachability
+async_fifo_fifo_count_mutation,Yosys_SMT_mutation,20,PASS,0.045,expected mutation counterexample
+id_tracker_safety,Yosys_SMT_bmc,40,PASS,0.155,solver-backed bounded safety
+id_tracker_reachability,Yosys_SMT_cover,80,PASS,0.044,leaf proof/cover with explicit reachability
+id_tracker_duplicate_id_mutation,Yosys_SMT_mutation,20,PASS,0.040,expected mutation counterexample
+local_error_safety,Yosys_SMT_bmc,40,PASS,2.806,solver-backed bounded safety
+local_error_reachability,Yosys_SMT_cover,80,PASS,0.044,leaf proof/cover with explicit reachability
+local_error_error_leak_mutation,Yosys_SMT_mutation,20,PASS,0.041,expected mutation counterexample
+route_owner_safety,Yosys_SMT_bmc,40,PASS,0.054,solver-backed bounded safety
+route_owner_reachability,Yosys_SMT_cover,80,PASS,0.042,leaf proof/cover with explicit reachability
+route_owner_early_unlock_mutation,Yosys_SMT_mutation,20,PASS,0.042,expected mutation counterexample
+full_fabric_solver,Yosys_SMT,NA,SKIP,NA,installed frontend does not support multidimensional SystemVerilog ports
