@@ -1,0 +1,2 @@
+test,status,requests,responses,mismatches,uvm_error,uvm_fatal,log
+axi4_vip_selftest,PASS,2,2,0,0,0,build/vip_selftest/run.log

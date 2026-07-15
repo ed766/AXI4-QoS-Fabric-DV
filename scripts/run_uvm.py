@@ -10,7 +10,7 @@ UVM_HOME=Path(os.environ.get('UVM_HOME',str(Path.home()/'uvm-verilator'/'src')))
 
 def build()->Path:
     binary=BUILD/'Vtb_axi4_fabric_uvm'
-    sources=[UVM_HOME/'uvm_pkg.sv',ROOT/'sim/uvm/axi_master_if.sv',ROOT/'sim/uvm/axi_fabric_uvm_pkg.sv',
+    sources=[UVM_HOME/'uvm_pkg.sv',ROOT/'sim/uvm/axi_master_if.sv',ROOT/'vip/axi4/axi4_uvm_vip_pkg.sv',ROOT/'sim/uvm/axi_fabric_uvm_pkg.sv',
              ROOT/'rtl/qos_arbiter.sv',ROOT/'rtl/axi4_qos_fabric.sv',ROOT/'sim/axi_memory_model.sv',
              ROOT/'sim/assertions/axi4_fabric_assertions.sv',ROOT/'sim/uvm/tb_axi4_fabric_uvm.sv']
     if binary.exists() and binary.stat().st_mtime >= max(path.stat().st_mtime for path in sources): return binary
@@ -18,8 +18,8 @@ def build()->Path:
     BUILD.mkdir(parents=True,exist_ok=True)
     cmd=[VERILATOR,'--binary','-j','2','--sv','--timing','--assert','-Wno-fatal','-Wno-DECLFILENAME',
          '-Wno-PINCONNECTEMPTY','-Wno-WIDTHEXPAND','-Wno-WIDTHTRUNC','-Wno-UNUSEDSIGNAL',
-         '+define+UVM_NO_DPI',f'+incdir+{UVM_HOME}','-Isim/uvm',str(UVM_HOME/'uvm_pkg.sv'),
-         'sim/uvm/axi_master_if.sv','sim/uvm/axi_fabric_uvm_pkg.sv','rtl/qos_arbiter.sv',
+         '+define+UVM_NO_DPI',f'+incdir+{UVM_HOME}','-Isim/uvm','-Ivip/axi4',str(UVM_HOME/'uvm_pkg.sv'),
+         'sim/uvm/axi_master_if.sv','vip/axi4/axi4_uvm_vip_pkg.sv','sim/uvm/axi_fabric_uvm_pkg.sv','rtl/qos_arbiter.sv',
          'rtl/axi4_qos_fabric.sv','sim/axi_memory_model.sv','sim/assertions/axi4_fabric_assertions.sv',
          'sim/uvm/tb_axi4_fabric_uvm.sv','--top-module','tb_axi4_fabric_uvm','-Mdir',str(BUILD)]
     result=subprocess.run(cmd,cwd=ROOT,text=True,capture_output=True)

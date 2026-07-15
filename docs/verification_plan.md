@@ -7,6 +7,7 @@
 | Named integrated regression | `30 / 30` | `make regress` | `regression_summary.csv` |
 | Seeded-random stress | `100 / 100` | `make random-stress` | `random_regress_summary.csv` |
 | Real UVM runtime regression | `8 / 8` | `make uvm-regress` | `uvm_runtime_summary.csv` |
+| Reusable AXI VIP self-test | `1 / 1` | `make vip-selftest` | `vip_selftest_summary.csv` |
 | Independent SystemC/TLM checking | `130 / 130` trace replays | `make model-replay` | `model_replay_summary.csv` |
 | Functional coverage | `56 / 56` | `make functional-coverage` | `functional_coverage.csv` |
 | Interaction coverage | `46 / 46` | `make functional-coverage` | `cross_coverage.csv` |

@@ -1,133 +1,10 @@
 `timescale 1ns/1ps
 package axi_fabric_uvm_pkg;
   import uvm_pkg::*;
+  import axi4_uvm_vip_pkg::*;
   `include "uvm_macros.svh"
 
-  typedef enum {EV_AW,EV_AR,EV_B,EV_R} event_kind_e;
-  virtual axi_master_if g_master_vif;
-  logic [3:0] g_awready,g_wready,g_bvalid,g_arready,g_rvalid,g_rlast;
-  logic [3:0][3:0] g_bid,g_rid;
-  logic [3:0][1:0] g_bresp,g_rresp;
-  logic [3:0][63:0] g_rdata;
-  int g_first_target1_master=-1;
-  int g_reset_epoch=0;
-  bit g_age_override_seen=0;
-
-  class axi_item extends uvm_sequence_item;
-    rand bit write;
-    rand bit [3:0] id;
-    rand bit [31:0] addr;
-    rand int unsigned beats;
-    rand bit [3:0] qos;
-    rand bit [2:0] prot;
-    rand bit [63:0] data;
-    bit [1:0] resp;
-    event_kind_e event_kind;
-    int unsigned master;
-    int unsigned target;
-    int unsigned epoch;
-    bit last;
-    constraint c_beats { beats inside {[1:16]}; }
-    `uvm_object_utils_begin(axi_item)
-      `uvm_field_int(write,UVM_DEFAULT) `uvm_field_int(id,UVM_DEFAULT)
-      `uvm_field_int(addr,UVM_HEX) `uvm_field_int(beats,UVM_DEFAULT)
-      `uvm_field_int(qos,UVM_DEFAULT) `uvm_field_int(prot,UVM_DEFAULT)
-      `uvm_field_int(data,UVM_HEX) `uvm_field_int(resp,UVM_DEFAULT)
-      `uvm_field_int(target,UVM_DEFAULT) `uvm_field_int(epoch,UVM_DEFAULT)
-    `uvm_object_utils_end
-    function new(string name="axi_item"); super.new(name); endfunction
-  endclass
-
-  class axi_sequencer extends uvm_sequencer#(axi_item);
-    `uvm_component_utils(axi_sequencer)
-    function new(string name,uvm_component parent); super.new(name,parent); endfunction
-  endclass
-
-  class axi_driver extends uvm_driver#(axi_item);
-    `uvm_component_utils(axi_driver)
-    virtual axi_master_if vif;
-    int unsigned master;
-    function new(string name,uvm_component parent); super.new(name,parent); endfunction
-    function void build_phase(uvm_phase phase);
-      super.build_phase(phase);
-      if(!uvm_config_db#(int unsigned)::get(this,"","master",master)) `uvm_fatal("CFG","missing master index")
-      vif=g_master_vif;
-      if(vif==null) `uvm_fatal("CFG","missing master vif")
-    endfunction
-    task run_phase(uvm_phase phase);
-      forever begin
-        seq_item_port.get_next_item(req);
-        `uvm_info("DRV",$sformatf("master=%0d got item write=%0d addr=%08x beats=%0d",master,req.write,req.addr,req.beats),UVM_LOW)
-        if(req.write) drive_write(req); else drive_read(req);
-        `uvm_info("DRV",$sformatf("master=%0d issued item id=%0d",master,req.id),UVM_LOW)
-        seq_item_port.item_done();
-      end
-    endtask
-    task drive_write(axi_item item);
-      @(negedge vif.clk); vif.awid[master]=item.id; vif.awaddr[master]=item.addr;
-      vif.awlen[master]=8'(item.beats-1); vif.awsize[master]=3; vif.awburst[master]=1;
-      vif.awprot[master]=item.prot; vif.awqos[master]=item.qos; vif.awvalid[master]=1;
-      do @(posedge vif.clk); while(!g_awready[master]); @(negedge vif.clk); vif.awvalid[master]=0;
-      `uvm_info("DRV",$sformatf("master=%0d AW accepted",master),UVM_LOW)
-      for(int b=0;b<item.beats;b++) begin
-        vif.wdata[master]=item.data+64'(b); vif.wstrb[master]='1;
-        vif.wlast[master]=(b==item.beats-1); vif.wvalid[master]=1;
-        do @(posedge vif.clk); while(!g_wready[master]); @(negedge vif.clk); vif.wvalid[master]=0;
-      end
-      // B completion is collected independently by the monitor/scoreboard, allowing more AW IDs to issue.
-    endtask
-    task drive_read(axi_item item);
-      @(negedge vif.clk); vif.arid[master]=item.id; vif.araddr[master]=item.addr;
-      vif.arlen[master]=8'(item.beats-1); vif.arsize[master]=3; vif.arburst[master]=1;
-      vif.arprot[master]=item.prot; vif.arqos[master]=item.qos; vif.arvalid[master]=1;
-      do @(posedge vif.clk); while(!g_arready[master]); @(negedge vif.clk); vif.arvalid[master]=0;
-      `uvm_info("DRV",$sformatf("master=%0d AR accepted",master),UVM_LOW)
-      // R completion is collected independently by the monitor/scoreboard, allowing pipelined IDs.
-    endtask
-  endclass
-
-  class axi_monitor extends uvm_monitor;
-    `uvm_component_utils(axi_monitor)
-    virtual axi_master_if vif; int unsigned master;
-    uvm_analysis_port#(axi_item) ap;
-    function new(string name,uvm_component parent); super.new(name,parent); ap=new("ap",this); endfunction
-    function void build_phase(uvm_phase phase);
-      super.build_phase(phase);
-      if(!uvm_config_db#(int unsigned)::get(this,"","master",master)) `uvm_fatal("CFG","missing monitor master")
-      vif=g_master_vif;
-    endfunction
-    task run_phase(uvm_phase phase);
-      forever begin
-        @(posedge vif.clk);
-        if(vif.rst_n && vif.awvalid[master] && g_awready[master]) publish(EV_AW,vif.awid[master],vif.awaddr[master],0,0,vif.awprot[master],vif.awlen[master]+1);
-        if(vif.rst_n && vif.arvalid[master] && g_arready[master]) publish(EV_AR,vif.arid[master],vif.araddr[master],0,0,vif.arprot[master],vif.arlen[master]+1);
-        if(vif.rst_n && g_bvalid[master] && vif.bready[master]) publish(EV_B,g_bid[master],0,g_bresp[master],1,0,0);
-        if(vif.rst_n && g_rvalid[master] && vif.rready[master]) publish(EV_R,g_rid[master],0,g_rresp[master],g_rlast[master],0,0);
-      end
-    endtask
-    function void publish(event_kind_e kind,bit[3:0] id,bit[31:0] addr,bit[1:0] resp,bit last,bit[2:0] prot,int beats);
-      axi_item item=axi_item::type_id::create("observed");
-      item.event_kind=kind; item.master=master; item.id=id; item.addr=addr; item.resp=resp;
-      item.last=last; item.prot=prot; item.beats=beats; item.target=addr[31:28]; item.epoch=g_reset_epoch; ap.write(item);
-    endfunction
-  endclass
-
-  class axi_agent extends uvm_agent;
-    `uvm_component_utils(axi_agent)
-    axi_sequencer sequencer; axi_driver driver; axi_monitor monitor; int unsigned master;
-    function new(string name,uvm_component parent); super.new(name,parent); endfunction
-    function void build_phase(uvm_phase phase);
-      super.build_phase(phase);
-      if(!uvm_config_db#(int unsigned)::get(this,"","master",master)) master=0;
-      uvm_config_db#(int unsigned)::set(this,"*","master",master);
-      sequencer=axi_sequencer::type_id::create("sequencer",this);
-      driver=axi_driver::type_id::create("driver",this);
-      monitor=axi_monitor::type_id::create("monitor",this);
-    endfunction
-    function void connect_phase(uvm_phase phase); driver.seq_item_port.connect(sequencer.seq_item_export); endfunction
-  endclass
-
-  class axi_scoreboard extends uvm_subscriber#(axi_item);
+  class axi_scoreboard extends uvm_subscriber#(axi4_vip_item);
     `uvm_component_utils(axi_scoreboard)
     bit read_pending[4][16]; bit write_pending[4][16]; bit[1:0] read_expected[4][16]; bit[1:0] write_expected[4][16];
     int read_expected_beats[4][16]; int read_seen_beats[4][16]; int response_order[4][16];
@@ -139,15 +16,15 @@ package axi_fabric_uvm_pkg;
       if(addr[31:28]==2 && addr[15:12]==4'hf) return 2'b10;
       return 2'b00;
     endfunction
-    function void write(axi_item t);
+    function void write(axi4_vip_item t);
       if(t.epoch!=current_epoch) begin mismatches++; return; end
       case(t.event_kind)
-        EV_AW: begin write_pending[t.master][t.id]=1; write_expected[t.master][t.id]=expected(t.addr,t.prot); requests++; end
-        EV_AR: begin read_pending[t.master][t.id]=1; read_expected[t.master][t.id]=expected(t.addr,t.prot); read_expected_beats[t.master][t.id]=t.beats; read_seen_beats[t.master][t.id]=0; requests++; end
-        EV_B: begin
+        AXI4_EV_AW: begin write_pending[t.master][t.id]=1; write_expected[t.master][t.id]=expected(t.addr,t.prot); requests++; end
+        AXI4_EV_AR: begin read_pending[t.master][t.id]=1; read_expected[t.master][t.id]=expected(t.addr,t.prot); read_expected_beats[t.master][t.id]=t.beats; read_seen_beats[t.master][t.id]=0; requests++; end
+        AXI4_EV_B: begin
           responses++; response_order[t.master][t.id]=response_serial++; if(!write_pending[t.master][t.id] || t.resp!=write_expected[t.master][t.id]) mismatches++; write_pending[t.master][t.id]=0;
         end
-        EV_R: begin
+        AXI4_EV_R: begin
           read_seen_beats[t.master][t.id]++;
           if(t.last != (read_seen_beats[t.master][t.id]==read_expected_beats[t.master][t.id])) mismatches++;
           if(t.last) begin responses++; response_order[t.master][t.id]=response_serial++; if(!read_pending[t.master][t.id] || t.resp!=read_expected[t.master][t.id]) mismatches++; read_pending[t.master][t.id]=0; end
@@ -162,21 +39,25 @@ package axi_fabric_uvm_pkg;
 
   class fabric_virtual_sequencer extends uvm_sequencer;
     `uvm_component_utils(fabric_virtual_sequencer)
-    axi_sequencer master_sqr[4];
+    axi4_master_sequencer master_sqr[4];
     function new(string name,uvm_component parent); super.new(name,parent); endfunction
   endclass
 
   class fabric_env extends uvm_env;
     `uvm_component_utils(fabric_env)
-    axi_agent agents[4]; axi_scoreboard scoreboard; fabric_virtual_sequencer vseqr;
+    axi4_master_agent agents[4]; axi4_master_config agent_cfg[4];
+    axi_scoreboard scoreboard; fabric_virtual_sequencer vseqr; virtual axi_master_if vif;
     function new(string name,uvm_component parent); super.new(name,parent); endfunction
     function void build_phase(uvm_phase phase);
       super.build_phase(phase);
+      if(!uvm_config_db#(virtual axi_master_if)::get(this,"","vif",vif)) `uvm_fatal("CFG","missing env vif")
       scoreboard=axi_scoreboard::type_id::create("scoreboard",this);
       vseqr=fabric_virtual_sequencer::type_id::create("vseqr",this);
       for(int m=0;m<4;m++) begin
-        uvm_config_db#(int unsigned)::set(this,$sformatf("agent%0d",m),"master",m);
-        agents[m]=axi_agent::type_id::create($sformatf("agent%0d",m),this);
+        agent_cfg[m]=axi4_master_config::type_id::create($sformatf("agent_cfg%0d",m));
+        agent_cfg[m].vif=vif; agent_cfg[m].master_index=m;
+        uvm_config_db#(axi4_master_config)::set(this,$sformatf("agent%0d",m),"cfg",agent_cfg[m]);
+        agents[m]=axi4_master_agent::type_id::create($sformatf("agent%0d",m),this);
       end
     endfunction
     function void connect_phase(uvm_phase phase);
@@ -185,12 +66,12 @@ package axi_fabric_uvm_pkg;
     endfunction
   endclass
 
-  class directed_sequence extends uvm_sequence#(axi_item);
+  class directed_sequence extends uvm_sequence#(axi4_vip_item);
     `uvm_object_utils(directed_sequence)
     bit write; bit[3:0] id; bit[31:0] addr; int beats=1; bit[3:0] qos; bit[2:0] prot; bit[63:0] data;
     function new(string name="directed_sequence"); super.new(name); endfunction
     task body();
-      axi_item item=axi_item::type_id::create("item"); start_item(item);
+      axi4_vip_item item=axi4_vip_item::type_id::create("item"); start_item(item);
       item.write=write; item.id=id; item.addr=addr; item.beats=beats; item.qos=qos; item.prot=prot; item.data=data;
       finish_item(item);
     endtask
@@ -244,21 +125,24 @@ package axi_fabric_uvm_pkg;
 
   class fabric_base_test extends uvm_test;
     `uvm_component_utils(fabric_base_test)
-    fabric_env env;
+    fabric_env env; virtual axi_master_if vif;
     function new(string name,uvm_component parent); super.new(name,parent); endfunction
-    function void build_phase(uvm_phase phase); super.build_phase(phase); env=fabric_env::type_id::create("env",this); endfunction
+    function void build_phase(uvm_phase phase); super.build_phase(phase);
+      if(!uvm_config_db#(virtual axi_master_if)::get(this,"","vif",vif)) `uvm_fatal("CFG","missing test vif")
+      env=fabric_env::type_id::create("env",this);
+    endfunction
     task reset_dut();
       `uvm_info("TEST","asserting reset",UVM_LOW)
-      g_master_vif.awvalid='0; g_master_vif.wvalid='0; g_master_vif.bready='1;
-      g_master_vif.arvalid='0; g_master_vif.rready='1;
-      g_master_vif.awid='0; g_master_vif.awaddr='0; g_master_vif.awlen='0;
-      g_master_vif.awsize={4{3'd3}}; g_master_vif.awburst={4{2'b01}}; g_master_vif.awprot='0; g_master_vif.awqos='0;
-      g_master_vif.wdata='0; g_master_vif.wstrb='1; g_master_vif.wlast='0;
-      g_master_vif.arid='0; g_master_vif.araddr='0; g_master_vif.arlen='0;
-      g_master_vif.arsize={4{3'd3}}; g_master_vif.arburst={4{2'b01}}; g_master_vif.arprot='0; g_master_vif.arqos='0;
-      g_master_vif.rst_n=0; repeat(6) @(posedge g_master_vif.clk);
-      g_reset_epoch++; env.scoreboard.reset_epoch(g_reset_epoch);
-      g_master_vif.rst_n=1; repeat(3) @(posedge g_master_vif.clk);
+      vif.awvalid='0; vif.wvalid='0; vif.bready='1;
+      vif.arvalid='0; vif.rready='1;
+      vif.awid='0; vif.awaddr='0; vif.awlen='0;
+      vif.awsize={4{3'd3}}; vif.awburst={4{2'b01}}; vif.awprot='0; vif.awqos='0;
+      vif.wdata='0; vif.wstrb='1; vif.wlast='0;
+      vif.arid='0; vif.araddr='0; vif.arlen='0;
+      vif.arsize={4{3'd3}}; vif.arburst={4{2'b01}}; vif.arprot='0; vif.arqos='0;
+      vif.rst_n=0; repeat(6) @(posedge vif.clk);
+      vif.reset_epoch++; env.scoreboard.reset_epoch(vif.reset_epoch);
+      vif.rst_n=1; repeat(3) @(posedge vif.clk);
       `uvm_info("TEST","reset complete",UVM_LOW)
     endtask
     task run_one(int master,bit write,bit[3:0] id,bit[31:0] addr,int beats,bit[3:0] qos,bit[2:0] prot,bit[63:0] data);
@@ -269,7 +153,7 @@ package axi_fabric_uvm_pkg;
     function void check_scoreboard(); if(env.scoreboard.mismatches) `uvm_error("SCOREBOARD",$sformatf("mismatches=%0d",env.scoreboard.mismatches)) endfunction
     task wait_responses(int expected);
       int timeout=0;
-      while(env.scoreboard.responses<expected && timeout<2000) begin @(posedge g_master_vif.clk); timeout++; end
+      while(env.scoreboard.responses<expected && timeout<2000) begin @(posedge vif.clk); timeout++; end
       if(timeout>=2000) `uvm_error("SCOREBOARD",$sformatf("response timeout expected=%0d actual=%0d",expected,env.scoreboard.responses))
     endtask
     function void report_phase(uvm_phase phase);
@@ -289,7 +173,7 @@ package axi_fabric_uvm_pkg;
     function new(string n,uvm_component p); super.new(n,p); endfunction
     task run_phase(uvm_phase phase); phase.raise_objection(this); reset_dut();
       fork run_one(0,0,3,32'h10000100,1,1,0,0); run_one(1,0,4,32'h10000180,1,15,0,0); join
-      wait_responses(2); if(g_first_target1_master!=1) `uvm_error("QOS","high-QoS master did not win first") check_scoreboard(); phase.drop_objection(this);
+      wait_responses(2); if(vif.first_target1_master!=1) `uvm_error("QOS","high-QoS master did not win first") check_scoreboard(); phase.drop_objection(this);
     endtask
   endclass
   class uvm_error_security_test extends fabric_base_test;
@@ -339,7 +223,7 @@ package axi_fabric_uvm_pkg;
     task run_phase(uvm_phase phase);
       starvation_virtual_sequence seq=starvation_virtual_sequence::type_id::create("seq");
       phase.raise_objection(this); reset_dut(); seq.vseqr=env.vseqr; seq.start(null);
-      wait_responses(env.scoreboard.requests); if(!g_age_override_seen) `uvm_error("STARVATION","aging override was not observed")
+      wait_responses(env.scoreboard.requests); if(!vif.age_override_seen) `uvm_error("STARVATION","aging override was not observed")
       check_scoreboard(); phase.drop_objection(this);
     endtask
   endclass
@@ -349,7 +233,7 @@ package axi_fabric_uvm_pkg;
     function new(string n,uvm_component p); super.new(n,p); endfunction
     task run_phase(uvm_phase phase);
       phase.raise_objection(this); reset_dut(); run_one(0,0,1,32'h1000_f000,4,1,0,0);
-      repeat(3) @(posedge g_master_vif.clk); reset_dut(); run_one(0,0,2,32'h1000_f100,1,1,0,0);
+      repeat(3) @(posedge vif.clk); reset_dut(); run_one(0,0,2,32'h1000_f100,1,1,0,0);
       wait_responses(1); if(env.scoreboard.requests!=1) `uvm_error("RESET","post-reset request count mismatch")
       check_scoreboard(); phase.drop_objection(this);
     endtask

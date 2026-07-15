@@ -57,6 +57,7 @@ def metrics():
       ('raw_design_branch_coverage',code('raw_design_branch')),
       ('raw_design_toggle_coverage',code('raw_design_toggle')),
       ('uvm_runtime',ratio(REPORTS/'uvm_runtime_summary.csv','status')),
+      ('reusable_axi_vip_selftest',ratio(REPORTS/'vip_selftest_summary.csv','status')),
       ('integrated_cdc',ratio(REPORTS/'cdc_summary.csv','status')),
       ('bounded_property_groups',f"{sum(r['mode']=='bounded_verilator' and r['status']=='PASS' for r in csv.DictReader((REPORTS/'formal_summary.csv').open()))} / 1" if (REPORTS/'formal_summary.csv').exists() else 'NOT_RUN'),
       ('solver_formal_groups',f"{sum(r['mode'].startswith('Yosys_SMT') and r['status']=='PASS' for r in csv.DictReader((REPORTS/'formal_summary.csv').open()))} / 14" if (REPORTS/'formal_summary.csv').exists() else 'NOT_RUN'),

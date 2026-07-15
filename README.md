@@ -16,7 +16,7 @@ flowchart LR
     F --> S1["S1 backpressured memory"]
     F --> S2["S2 secure/error target"]
     F --> C["Five-channel async bridge"] --> S3["S3 async memory"]
-    UVM["UVM agents + scoreboard + SVA"] -.-> F
+    UVM["Reusable AXI UVM agents + fabric scoreboard + SVA"] -.-> F
     TLM["Independent SystemC/TLM model"] -.-> F
 ```
 
@@ -33,6 +33,7 @@ The repository reports measured results separately from the full release targets
 | Full trace replay | `130 / 130` named/random traces checked for routing, scheduled response order, beats, IDs, and memory effects |
 | Assertions | `29` named classes and `120` elaborated protocol/CDC instances |
 | UVM runtime | `8 / 8` real phase-based tests on Verilator `v5.048`, including four-agent contention, reorder, aging, and reset |
+| Reusable AXI VIP self-test | `1 / 1` master/reactive-target agent reuse test with zero UVM errors or mismatches |
 | Functional / interaction coverage | `56 / 56` bins, `46 / 46` canonical crosses, and `24 / 24` advanced concurrent-activity crosses |
 | Verilator coverage | `86.05%` raw / `93.35%` reviewed line; `95.00%` raw branch; `69.71%` raw toggle |
 | Mutation detection | `6 / 6` injected faults detected |
@@ -69,6 +70,7 @@ This is a deliberately constrained AXI4 implementation, not protocol certificati
 ```bash
 make lint
 make model-check
+make vip-selftest      # extracted master/reactive-target agent package without the fabric DUT
 make uvm-regress       # auto-detects ~/verilator-v5.048 when present
 make release-check
 ```

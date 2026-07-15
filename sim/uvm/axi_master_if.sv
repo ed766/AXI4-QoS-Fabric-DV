@@ -18,4 +18,12 @@ interface axi_master_if #(parameter int NUM_MASTERS=4, ADDR_W=32, DATA_W=64, ID_
   logic [NUM_MASTERS-1:0][1:0] arburst;
   logic [NUM_MASTERS-1:0][3:0] arqos;
 
+  logic [NUM_MASTERS-1:0] awready,wready,bvalid,arready,rvalid,rlast;
+  logic [NUM_MASTERS-1:0][ID_W-1:0] bid,rid;
+  logic [NUM_MASTERS-1:0][1:0] bresp,rresp;
+  logic [NUM_MASTERS-1:0][DATA_W-1:0] rdata;
+  int first_target1_master=-1;
+  int reset_epoch=0;
+  bit age_override_seen=0;
+
 endinterface

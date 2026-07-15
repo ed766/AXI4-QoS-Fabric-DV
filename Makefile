@@ -7,7 +7,7 @@ REPORTS := reports
 RTL := rtl/qos_arbiter.sv rtl/async_fifo_gray.sv rtl/axi4_async_bridge.sv rtl/axi4_qos_fabric.sv
 SIM := sim/axi_memory_model.sv sim/assertions/axi4_fabric_assertions.sv sim/tb_axi4_qos_fabric.sv
 
-.PHONY: lint smoke regress model-test model-check model-replay uvm-check-env uvm-smoke uvm-regress formal-env \
+.PHONY: lint smoke regress model-test model-check model-replay uvm-check-env uvm-smoke uvm-regress vip-selftest formal-env \
         random-manifest random-stress functional-coverage code-coverage formal-prove mutation-check \
         advanced-cross-coverage target-protocol-negative async-cdc-check performance-sweep visual-reports synth-check equivalence-check gate-level-smoke \
         project-check release-check reports clean
@@ -56,6 +56,9 @@ uvm-smoke: uvm-check-env
 
 uvm-regress: uvm-check-env
 	VERILATOR_UVM="$(VERILATOR_UVM)" UVM_HOME="$(UVM_HOME)" $(PYTHON) scripts/run_uvm.py --tests uvm_single_route_test,uvm_qos_contention_test,uvm_error_security_test,uvm_multi_outstanding_test,uvm_multi_id_reorder_test,uvm_four_master_contention_test,uvm_qos_starvation_override_test,uvm_reset_with_outstanding_test
+
+vip-selftest: uvm-check-env
+	VERILATOR_UVM="$(VERILATOR_UVM)" UVM_HOME="$(UVM_HOME)" $(PYTHON) scripts/run_vip_selftest.py
 
 random-manifest:
 	$(PYTHON) scripts/gen_random_manifest.py --count 100
@@ -106,7 +109,7 @@ mutation-check:
 reports: functional-coverage performance-sweep
 	$(PYTHON) scripts/gen_reports.py metrics
 
-project-check: lint model-test model-check uvm-regress functional-coverage advanced-cross-coverage target-protocol-negative async-cdc-check performance-sweep visual-reports reports
+project-check: lint model-test model-check vip-selftest uvm-regress functional-coverage advanced-cross-coverage target-protocol-negative async-cdc-check performance-sweep visual-reports reports
 
 release-check: project-check model-replay code-coverage mutation-check synth-check equivalence-check gate-level-smoke
 	$(PYTHON) scripts/check_release_status.py

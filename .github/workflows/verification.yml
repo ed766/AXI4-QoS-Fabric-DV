@@ -48,12 +48,14 @@ jobs:
           make -j2
           make install
       - run: git clone https://github.com/chipsalliance/uvm-verilator.git /tmp/uvm-verilator && git -C /tmp/uvm-verilator checkout 656f20d087370a7c742e00188d20bbf30fa95339
-      - run: make uvm-regress VERILATOR_UVM=$HOME/.local/verilator-v5.048/bin/verilator UVM_HOME=/tmp/uvm-verilator/src
+      - run: make vip-selftest uvm-regress VERILATOR_UVM=$HOME/.local/verilator-v5.048/bin/verilator UVM_HOME=/tmp/uvm-verilator/src
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: uvm-runtime-evidence
-          path: reports/uvm_runtime_summary.csv
+          path: |
+            reports/uvm_runtime_summary.csv
+            reports/vip_selftest_summary.csv
   solver-properties:
     runs-on: ubuntu-24.04
     steps:

@@ -20,6 +20,7 @@ Measured open-source evidence only; planned closure targets are not presented as
 | `raw_design_branch_coverage` | `95.00%` |
 | `raw_design_toggle_coverage` | `69.71%` |
 | `uvm_runtime` | `8 / 8` |
+| `reusable_axi_vip_selftest` | `1 / 1` |
 | `integrated_cdc` | `4 / 4` |
 | `bounded_property_groups` | `1 / 1` |
 | `solver_formal_groups` | `14 / 14` |

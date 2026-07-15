@@ -11,6 +11,7 @@
 | Access control | Non-secure access to S2 | local `DECERR`, no target request | smoke log, security mutation |
 | Integrated CDC | Sustained S3 traffic, FIFO wrap, pending reset, four clock ratios | end-to-end data/ID and ghost-response checks | CDC summary |
 | UVM methodology | Eight phase-based tests including virtual multi-master sequences | UVM monitors and epoch/target/ID/beat scoreboard | UVM runtime summary |
+| Reusable protocol agents | Extracted master plus reactive-target agent connected without the fabric DUT | analysis-port event checker and UVM report counts | VIP self-test summary |
 | Checker sensitivity | Decode, ID, W-lock, response-owner, age, and security mutations | assertion/scoreboard/timeout | mutation summary |
 | Randomized stress | 100 manifest rows with applied traffic/fault knobs | protocol assertions and transaction checks | random regression summary |
 | Coverage closure | Observed normalized request, grant, beat, response, reset, and configuration events | 56 flat bins and 46 interaction bins | coverage reports |

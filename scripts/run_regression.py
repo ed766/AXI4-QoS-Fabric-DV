@@ -5,7 +5,6 @@ import argparse
 import csv
 import re
 import subprocess
-import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +39,6 @@ def run(binary: Path, name: str, args: list[str], timeout: int = 45, artifact_na
     trace.parent.mkdir(parents=True, exist_ok=True)
     log.parent.mkdir(parents=True, exist_ok=True)
     command = [str(binary), f"+TEST_NAME={name}", f"+TRACE_FILE={trace.relative_to(ROOT)}", *args]
-    start = time.monotonic()
     try:
         result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=timeout)
         output = result.stdout + result.stderr
@@ -58,7 +56,7 @@ def run(binary: Path, name: str, args: list[str], timeout: int = 45, artifact_na
         "status": status,
         "checks": str(checks),
         "errors": str(errors),
-        "duration_seconds": f"{time.monotonic() - start:.3f}",
+        "duration_seconds": "NA",
         "bucket": bucket,
         "trace": str(trace.relative_to(ROOT)),
         "log": str(log.relative_to(ROOT)),

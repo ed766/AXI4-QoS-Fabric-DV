@@ -5,7 +5,6 @@ import csv
 import os
 import shutil
 import subprocess
-import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,7 +31,6 @@ def solver_task(name: str, sources: list[str], top: str, mode: str, depth: int,
     if mode == "prove": command.append("-i")
     if mode == "cover": command.append("-c")
     command.append(str(smt))
-    start = time.monotonic()
     try:
         result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, env=env, timeout=60) if synth.returncode == 0 else synth
     except subprocess.TimeoutExpired as exc:
@@ -41,12 +39,11 @@ def solver_task(name: str, sources: list[str], top: str, mode: str, depth: int,
             stdout = exc.stdout or ""
             stderr = (exc.stderr or "") + "\nsolver timeout"
         result = TimedOut()
-    runtime = f"{time.monotonic()-start:.3f}"
     (work / f"{mode}.log").write_text(result.stdout + result.stderr)
     passed = result.returncode != 0 if expect_fail else result.returncode == 0
     note = "expected mutation counterexample" if expect_fail else ("solver-backed bounded safety" if mode == "bmc" else "leaf proof/cover with explicit reachability")
     return {"property_group": name, "mode": f"Yosys_SMT_{'mutation' if expect_fail else mode}",
-            "depth": str(depth), "status": "PASS" if passed else "FAIL", "runtime_seconds": runtime, "note": note}
+            "depth": str(depth), "status": "PASS" if passed else "FAIL", "runtime_seconds": "NA", "note": note}
 
 
 def main() -> int:
