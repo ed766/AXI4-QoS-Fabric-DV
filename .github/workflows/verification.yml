@@ -5,6 +5,13 @@ on:
   pull_request:
   workflow_dispatch:
 jobs:
+  documentation-consistency:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: make readme-metrics docs-check
+      - run: git diff --exit-code
+
   quick:
     runs-on: ubuntu-24.04
     steps:

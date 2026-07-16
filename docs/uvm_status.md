@@ -13,6 +13,8 @@ The UVM lane uses Verilator `v5.048` and `uvm-verilator` commit `656f20d087370a7
 
 The authoritative result is `reports/uvm_runtime_summary.csv`. A procedural test result is never substituted for a failed or timed-out UVM phase run.
 
+The reusable agent contract, configuration pattern, supported transaction subset, and limitations are documented in the [AXI4 UVM VIP guide](../vip/axi4/README.md).
+
 All eight tests complete through normal UVM build/connect/run/report phases with zero `UVM_ERROR`, zero `UVM_FATAL`, and non-zero expected scoreboard activity. No scenario alias or procedural fallback can produce a passing UVM row.
 
 `make vip-selftest` independently connects the extracted master and reactive-target agents without the fabric DUT. Its authoritative `reports/vip_selftest_summary.csv` row requires two requests, two matching responses, zero mismatches, and zero UVM errors/fatals. Fabric target models retain deeper queued reordering policies above this reusable protocol-agent layer.

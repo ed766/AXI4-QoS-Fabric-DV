@@ -25,6 +25,8 @@ Named tests additionally cover queued target responses, legal out-of-order compl
 
 Coverage is credited from passing scenarios and normalized request/response events. Functional, interaction, code, assertion, and mutation coverage remain separate evidence types.
 
+The extracted agent API, configuration pattern, supported subset, and standalone reuse test are documented in [`vip/axi4/README.md`](../vip/axi4/README.md).
+
 ## Acceptance
 
 - Every executable row meets expectation with no assertion, scoreboard, model, or timeout failure.

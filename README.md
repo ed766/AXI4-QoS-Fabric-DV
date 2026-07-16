@@ -22,25 +22,23 @@ flowchart LR
 
 ## Executed Evidence
 
-The repository reports measured results separately from the full release targets. Run `make reports` to refresh the current snapshot.
+Run `make reports` to refresh this generated snapshot from `reports/project_metrics.csv`.
 
-| Evidence | Current executable scope |
-| --- | --- |
-| Named integrated regression | `30 / 30` routing, burst, error, queued response reordering, contention, reset, backpressure, and CDC scenarios |
-| Seeded-random stress | `100 / 100` passing manifest-driven runs with reproducible knobs and logs |
-| Protocol/data smoke checks | `38 / 38` passing |
-| SystemC/TLM model self-test | `7 / 7` passing |
-| Full trace replay | `130 / 130` named/random traces checked for routing, scheduled response order, beats, IDs, and memory effects |
-| Assertions | `29` named classes and `120` elaborated protocol/CDC instances |
-| UVM runtime | `8 / 8` real phase-based tests on Verilator `v5.048`, including four-agent contention, reorder, aging, and reset |
-| Reusable AXI VIP self-test | `1 / 1` master/reactive-target agent reuse test with zero UVM errors or mismatches |
-| Functional / interaction coverage | `56 / 56` bins, `46 / 46` canonical crosses, and `24 / 24` advanced concurrent-activity crosses |
-| Verilator coverage | `86.05%` raw / `93.35%` reviewed line; `95.00%` raw branch; `69.71%` raw toggle |
-| Mutation detection | `6 / 6` injected faults detected |
-| Illegal-target checker sensitivity | `5 / 5` malformed response cases detected as expected failures |
-| Integrated CDC / performance | `4 / 4` clock ratios; `120` diagnostic and `72` sustained QoS/fairness result rows |
-| Solver formal | `15 / 15` required proof, bounded-safety, reachability-cover, and mutation-counterexample groups |
-| Implementation proxy | `2 / 2` parseable blocks synthesize and QoS gate smoke passes; full fabric remains frontend-limited |
+<!-- BEGIN GENERATED METRICS -->
+| Evidence | Current result |
+| --- | ---: |
+| Named integrated regression | `30 / 30` |
+| Seeded-random stress | `100 / 100` |
+| SystemC trace replay | `130 / 130` |
+| Real UVM runtime | `8 / 8` |
+| Reusable AXI VIP self-test | `1 / 1` |
+| Functional coverage | `56 / 56` |
+| Advanced interaction coverage | `24 / 24` |
+| Mutation detection | `6 / 6` |
+| Integrated CDC ratios | `4 / 4` |
+<!-- END GENERATED METRICS -->
+
+Additional measured evidence includes `46 / 46` canonical interaction crosses, `29` named assertion classes (`120` elaborated instances), `95.00%` raw branch coverage, and sustained QoS/fairness characterization. Formal/property evidence closes `15 / 15` groups: `14` solver-backed proof, bounded-safety, cover, and mutation groups plus `1` bounded Verilator simulation group. Full-fabric synthesis and equivalence remain explicitly `SKIP` because of the installed Yosys frontend limitation.
 
 ## Measured Visual Evidence
 
@@ -98,14 +96,15 @@ make release-check       # executable release gate; fails if any measured criter
 3. [Verification plan](docs/verification_plan.md)
 4. [Requirement traceability](docs/traceability.md)
 5. [UVM runtime status](docs/uvm_status.md)
-6. [Coverage](docs/coverage.md)
-7. [Code coverage and exclusions](docs/code_coverage.md)
-8. [Performance](docs/performance.md)
-9. [Implementation status](docs/implementation_status.md)
-10. [Five-minute reviewer guide](docs/reviewer_guide.md)
-11. [Assertion set](docs/assertions.md)
-12. [Bug diary](docs/bug_diary.md)
-13. [Formal evidence](docs/formal.md)
+6. [Reusable AXI4 UVM VIP guide](vip/axi4/README.md)
+7. [Coverage](docs/coverage.md)
+8. [Code coverage and exclusions](docs/code_coverage.md)
+9. [Performance](docs/performance.md)
+10. [Implementation status](docs/implementation_status.md)
+11. [Five-minute reviewer guide](docs/reviewer_guide.md)
+12. [Assertion set](docs/assertions.md)
+13. [Bug diary](docs/bug_diary.md)
+14. [Formal evidence](docs/formal.md)
 
 ## Tool and Signoff Boundaries
 
