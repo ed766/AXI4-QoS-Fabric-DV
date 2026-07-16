@@ -111,7 +111,6 @@ reports: functional-coverage performance-sweep
 	$(PYTHON) scripts/update_readme_metrics.py
 
 readme-metrics:
-	$(PYTHON) scripts/gen_reports.py metrics
 	$(PYTHON) scripts/update_readme_metrics.py
 
 docs-check:
