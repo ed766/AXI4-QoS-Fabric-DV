@@ -42,6 +42,7 @@ jobs:
       - name: Install pinned OSS CAD Suite
         run: |
           if [ ! -x "$HOME/.cache/oss-cad-suite/bin/yosys" ]; then
+            mkdir -p "$HOME/.cache"
             curl -L --retry 3 \
               "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/${OSS_CAD_TAG}/${OSS_CAD_ARCHIVE}" \
               -o "/tmp/${OSS_CAD_ARCHIVE}"
