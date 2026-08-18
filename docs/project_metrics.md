@@ -26,9 +26,11 @@ Measured open-source evidence only; planned closure targets are not presented as
 | `solver_formal_groups` | `14 / 14` |
 | `mutation_detection` | `6 / 6` |
 | `illegal_target_checker_sensitivity` | `5 / 5` |
+| `optional_dma_iommu` | `1 / 1` |
+| `iommu_targeted_coverage` | `19 / 19` |
 | `performance_points` | `120 / 120` |
 | `sustained_qos_points` | `72 / 72` |
-| `release_readiness` | `18 / 18` |
-| `synthesized_blocks` | `2 / 2` |
-| `gate_level_smoke` | `1 / 1` |
-| `full_fabric_synthesis_equivalence` | `SKIP (installed Yosys frontend limitation)` |
+| `release_readiness` | `19 / 19` |
+| `synthesized_blocks` | `4 / 4` |
+| `gate_level_smoke` | `2 / 2` |
+| `full_fabric_synthesis_equivalence` | `synthesis PASS; RTL/netlist smoke PASS; unbounded sequential proof PARTIAL` |

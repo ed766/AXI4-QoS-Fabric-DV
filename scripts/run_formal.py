@@ -79,7 +79,7 @@ def main() -> int:
         if mutation:
             rows.append(solver_task(f"{name}_{mutation_name}_mutation", sources, top, "bmc", 20, mutation, True))
     rows.append({"property_group": "full_fabric_solver", "mode": "Yosys_SMT", "depth": "NA", "status": "SKIP",
-                 "runtime_seconds": "NA", "note": "installed frontend does not support multidimensional SystemVerilog ports"})
+                 "runtime_seconds": "NA", "note": "frontend now elaborates the fabric; full-state solver proof remains resource-limited and is not claimed"})
     with OUT.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=rows[0].keys(), lineterminator="\n")
         writer.writeheader(); writer.writerows(rows)

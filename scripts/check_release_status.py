@@ -14,7 +14,7 @@ def rows(name: str) -> list[dict[str, str]]:
 
 
 def passes(name: str, field: str = "status") -> int:
-    return sum(row.get(field) in ("PASS", "HIT", "YES") for row in rows(name))
+    return sum(row.get(field) in ("PASS", "HIT", "YES", "COVERED") for row in rows(name))
 
 
 def main() -> int:
@@ -35,9 +35,10 @@ def main() -> int:
         ("performance_points", passes("performance_summary.csv"), 120),
         ("sustained_qos_points", passes("qos_fairness_summary.csv"), 72),
         ("illegal_target_checker_sensitivity", passes("target_protocol_negative_summary.csv", "detected"), 5),
+        ("iommu_coverage", passes("iommu_coverage.csv"), 19),
         ("raw_design_branch_percent", next((float(row["line_percent"]) for row in coverage if row["scope"] == "raw_design_branch"), 0.0), 90.0),
-        ("synthesized_blocks", passes("synthesis_summary.csv"), 2),
-        ("gate_level_smoke", passes("gate_level_summary.csv"), 1),
+        ("synthesized_blocks", passes("synthesis_summary.csv"), 4),
+        ("gate_level_smoke", passes("gate_level_summary.csv"), 2),
         ("reviewed_executable_line_percent", reviewed, 90.0),
     ]
     output = REPORTS / "release_readiness.csv"

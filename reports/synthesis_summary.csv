@@ -1,4 +1,5 @@
-variant,status,cell_count,register_wire_proxy,timing_proxy,note
-qos_arbiter,PASS,709,3484,NA,Yosys generic-cell structural proxy
-async_fifo_gray,PASS,851,952,NA,Yosys generic-cell structural proxy
-4x4_full_fabric,SKIP,NA,NA,NA,Yosys 0.33 lacks a multidimensional-SystemVerilog port frontend; use read-slang for full-fabric synthesis
+variant,status,cell_count,register_wire_proxy,timing_proxy,runtime_seconds,note
+qos_arbiter,PASS,726,3502,NA,0.27,Yosys generic-cell structural proxy; no technology timing signoff
+async_fifo_gray,PASS,851,952,NA,0.05,Yosys generic-cell structural proxy; no technology timing signoff
+dma_iommu,PASS,13932,43146,NA,1.36,Yosys generic-cell structural proxy; no technology timing signoff
+4x4_full_fabric,PASS,35710,169986,NA,10.01,Yosys generic-cell structural proxy; no technology timing signoff

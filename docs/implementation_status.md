@@ -16,6 +16,6 @@
 
 ## Explicit Non-Signoff Limits
 
-- Solver-backed QoS safety and reachability pass; full-fabric proof remains `SKIP` because the installed frontend cannot parse multidimensional AXI ports.
-- Yosys synthesis passes for the QoS arbiter and asynchronous FIFO, and a generic-netlist QoS gate smoke passes. Full-fabric synthesis remains `SKIP`; sequential equivalence is `PARTIAL` and not claimed as closure.
+- Solver-backed QoS and leaf-block safety/reachability pass. The frontend now elaborates the complete fabric, but full-state solver proof remains `SKIP` because of state-space cost.
+- Yosys synthesis passes for the QoS arbiter, asynchronous FIFO, and complete 4x4 fabric. RTL and the zero-delay generic netlist pass the same six observable routing/error checks. Unbounded sequential equivalence remains `PARTIAL` and is not claimed as closure.
 - The implementation is a documented AXI4 subset, not AXI certification, commercial CDC signoff, or timing signoff.

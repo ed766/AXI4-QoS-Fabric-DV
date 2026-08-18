@@ -129,16 +129,16 @@ module axi4_qos_fabric #(
   logic [NUM_MASTERS-1:0] r_lock;
   logic [NUM_MASTERS-1:0][SIDX_W-1:0] r_owner;
 
-  logic route_push [NUM_MASTERS];
-  logic route_pop [NUM_MASTERS];
+  logic [NUM_MASTERS-1:0] route_push;
+  logic [NUM_MASTERS-1:0] route_pop;
   logic [NUM_MASTERS-1:0][SIDX_W:0] route_push_target;
 
   function automatic logic [ADDR_W-1:0] base_at(input int idx);
-    return SLAVE_BASES[idx*ADDR_W +: ADDR_W];
+    base_at = SLAVE_BASES[idx*ADDR_W +: ADDR_W];
   endfunction
 
   function automatic logic [ADDR_W-1:0] mask_at(input int idx);
-    return SLAVE_MASKS[idx*ADDR_W +: ADDR_W];
+    mask_at = SLAVE_MASKS[idx*ADDR_W +: ADDR_W];
   endfunction
 
   function automatic logic count_below_limit(input logic [ID_COUNT-1:0] bits);
@@ -147,7 +147,7 @@ module axi4_qos_fabric #(
     begin
       count = 0;
       for (k = 0; k < ID_COUNT; k++) count += int'(bits[k]);
-      return count < MAX_OUTSTANDING;
+      count_below_limit = count < MAX_OUTSTANDING;
     end
   endfunction
 
@@ -300,7 +300,7 @@ module axi4_qos_fabric #(
     m_wdata = '0;
     m_wstrb = '0;
     m_wlast = '0;
-    route_pop = '{default:1'b0};
+    route_pop = '0;
     target_w_pop = '0;
     for (int si = 0; si < NUM_SLAVES; si++) begin
       logic selected;
@@ -337,7 +337,7 @@ module axi4_qos_fabric #(
   always_comb begin
     s_bvalid = local_b_pending;
     s_bid = local_bid;
-    s_bresp = '{default:2'b11};
+    s_bresp = '1;
     m_bready = '0;
     for (int mi = 0; mi < NUM_MASTERS; mi++) begin
       if (!local_b_pending[mi]) begin
@@ -399,7 +399,7 @@ module axi4_qos_fabric #(
   end
 
   always_comb begin
-    route_push = '{default:1'b0};
+    route_push = '0;
     route_push_target = '0;
     target_w_push = '0;
     for (int mi = 0; mi < NUM_MASTERS; mi++) begin

@@ -16,6 +16,7 @@
 | Mutation sensitivity | `6 / 6` | `make mutation-check` | `mutation_summary.csv` |
 | Integrated CDC | `4 / 4` ratios | `make async-cdc-check` | `cdc_summary.csv` |
 | Illegal-target checker sensitivity | `5 / 5` expected detections | `make target-protocol-negative` | `target_protocol_negative_summary.csv` |
+| Optional DMA IOMMU | `25` checks, `19 / 19` targeted points | `make iommu-check` | IOMMU summary and coverage |
 | Performance characterization | `120` diagnostic + `72` sustained rows | `make performance-sweep` | performance/QoS summaries |
 | Reviewed executable line coverage | at least `90%` | `make code-coverage` | raw and reviewed reports |
 

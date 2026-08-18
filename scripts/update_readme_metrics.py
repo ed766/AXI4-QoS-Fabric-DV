@@ -21,6 +21,7 @@ SELECTED = (
     ("advanced_interaction_coverage", "Advanced interaction coverage"),
     ("mutation_detection", "Mutation detection"),
     ("integrated_cdc", "Integrated CDC ratios"),
+    ("iommu_targeted_coverage", "Optional DMA IOMMU coverage"),
 )
 
 

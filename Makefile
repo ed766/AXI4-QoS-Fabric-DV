@@ -9,12 +9,13 @@ SIM := sim/axi_memory_model.sv sim/assertions/axi4_fabric_assertions.sv sim/tb_a
 
 .PHONY: lint smoke regress model-test model-check model-replay uvm-check-env uvm-smoke uvm-regress vip-selftest formal-env \
         random-manifest random-stress functional-coverage code-coverage formal-prove mutation-check \
-        advanced-cross-coverage target-protocol-negative async-cdc-check performance-sweep visual-reports synth-check equivalence-check gate-level-smoke \
+        advanced-cross-coverage target-protocol-negative async-cdc-check iommu-check performance-sweep visual-reports synth-check equivalence-check gate-level-smoke \
         project-check release-check reports readme-metrics docs-check clean
 
 lint:
 	$(VERILATOR) --lint-only --sv --top-module axi4_qos_fabric -Wall rtl/qos_arbiter.sv rtl/axi4_qos_fabric.sv
 	$(VERILATOR) --lint-only --sv --top-module axi4_async_bridge -Wall rtl/async_fifo_gray.sv rtl/axi4_async_bridge.sv
+	$(VERILATOR) --lint-only --sv --timing --assert --top-module dma_iommu -Wall -Wno-UNUSEDSIGNAL -Wno-SYNCASYNCNET rtl/dma_iommu.sv
 
 $(BUILD)/smoke/Vtb_axi4_qos_fabric: $(RTL) $(SIM)
 	mkdir -p $(BUILD)/smoke $(BUILD)/traces
@@ -81,6 +82,9 @@ code-coverage:
 async-cdc-check: smoke
 	$(PYTHON) scripts/run_cdc_matrix.py
 
+iommu-check:
+	$(PYTHON) scripts/run_iommu.py
+
 performance-sweep: smoke
 	$(PYTHON) scripts/gen_performance.py
 	$(PYTHON) scripts/gen_qos_dashboard.py
@@ -118,7 +122,7 @@ docs-check:
 
 project-check: lint model-test model-check vip-selftest uvm-regress functional-coverage advanced-cross-coverage target-protocol-negative async-cdc-check performance-sweep visual-reports reports
 
-release-check: project-check model-replay code-coverage mutation-check synth-check equivalence-check gate-level-smoke
+release-check: project-check model-replay code-coverage mutation-check iommu-check synth-check equivalence-check gate-level-smoke
 	$(PYTHON) scripts/check_release_status.py
 	$(PYTHON) scripts/gen_reports.py metrics
 	$(PYTHON) scripts/update_readme_metrics.py

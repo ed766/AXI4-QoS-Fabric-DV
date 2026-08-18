@@ -17,4 +17,5 @@
 | Coverage closure | Observed normalized request, grant, beat, response, reset, and configuration events | 56 flat bins and 46 interaction bins | coverage reports |
 | Advanced interaction closure | Depth/policy, QoS/contention, response queue/backpressure, W-before-AW | 24 same-window bins from focused traces | advanced cross report |
 | Illegal target protocol | Early/late RLAST, unknown RID, duplicate B, malformed BID | SVA/checker/timeout expected detection | target protocol negative summary |
-| Implementation proxy | QoS arbiter and async FIFO synthesis; QoS netlist smoke | Yosys stat and Verilator gate test | synthesis/gate reports |
+| Implementation proxy | QoS arbiter, async FIFO, and full 4x4 synthesis; matched RTL/netlist smoke | Yosys stat and Verilator gate test | synthesis, gate, and equivalence reports |
+| Optional DMA translation | Two-level walks, IOTLB, ASIDs, permissions, invalidation, and contained faults | Directed matrix plus six assertions | IOMMU summary and coverage reports |

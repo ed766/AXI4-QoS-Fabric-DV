@@ -14,4 +14,4 @@ local_error_error_leak_mutation,Yosys_SMT_mutation,20,PASS,NA,expected mutation 
 route_owner_safety,Yosys_SMT_bmc,40,PASS,NA,solver-backed bounded safety
 route_owner_reachability,Yosys_SMT_cover,80,PASS,NA,leaf proof/cover with explicit reachability
 route_owner_early_unlock_mutation,Yosys_SMT_mutation,20,PASS,NA,expected mutation counterexample
-full_fabric_solver,Yosys_SMT,NA,SKIP,NA,installed frontend does not support multidimensional SystemVerilog ports
+full_fabric_solver,Yosys_SMT,NA,SKIP,NA,frontend now elaborates the fabric; full-state solver proof remains resource-limited and is not claimed

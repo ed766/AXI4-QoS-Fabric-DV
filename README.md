@@ -1,6 +1,6 @@
 # AXI4 QoS Fabric RTL and DV Project
 
-A standalone, synthesizable 4-initiator/4-target AXI4 shared fabric built to demonstrate SoC interconnect design and verification. The fabric implements independent read/write routing, ID ownership, four outstanding IDs per initiator, burst-locked data routing, QoS-aware round-robin arbitration with aging, static access control, local `DECERR`, and a five-channel asynchronous AXI target bridge.
+A standalone, synthesizable 4-initiator/4-target AXI4 shared fabric built to demonstrate SoC interconnect design and verification. The fabric implements independent read/write routing, ID ownership, four outstanding IDs per initiator, burst-locked data routing, QoS-aware round-robin arbitration with aging, static access control, local `DECERR`, and a five-channel asynchronous AXI target bridge. An optional DMA IOMMU adds ASID-tagged address translation and protection as separately verified integration collateral.
 
 This project is independent of the earlier RISC-V chiplet and L1 cache projects. No DUT RTL or reference model is reused.
 
@@ -36,9 +36,10 @@ Run `make reports` to refresh this generated snapshot from `reports/project_metr
 | Advanced interaction coverage | `24 / 24` |
 | Mutation detection | `6 / 6` |
 | Integrated CDC ratios | `4 / 4` |
+| Optional DMA IOMMU coverage | `19 / 19` |
 <!-- END GENERATED METRICS -->
 
-Additional measured evidence includes `46 / 46` canonical interaction crosses, `29` named assertion classes (`120` elaborated instances), `95.00%` raw branch coverage, and sustained QoS/fairness characterization. Formal/property evidence closes `15 / 15` groups: `14` solver-backed proof, bounded-safety, cover, and mutation groups plus `1` bounded Verilator simulation group. Full-fabric synthesis and equivalence remain explicitly `SKIP` because of the installed Yosys frontend limitation.
+Additional measured evidence includes `46 / 46` canonical interaction crosses, `29` named assertion classes (`120` elaborated instances), `95.00%` raw branch coverage, and sustained QoS/fairness characterization. Formal/property evidence closes `15 / 15` groups: `14` solver-backed proof, bounded-safety, cover, and mutation groups plus `1` bounded Verilator simulation group. The complete 4x4 fabric now synthesizes through the pinned OSS CAD Suite, and both RTL and its zero-delay generic netlist pass the same mapped-routing and local-error smoke checks; unbounded sequential equivalence remains explicitly `PARTIAL` because induction is resource-limited.
 
 ## Measured Visual Evidence
 
@@ -83,6 +84,7 @@ make target-protocol-negative
 make code-coverage
 make formal-prove
 make mutation-check
+make iommu-check       # optional two-level page walks, IOTLB, permissions, and invalidation
 make synth-check
 make equivalence-check
 make gate-level-smoke
@@ -105,7 +107,8 @@ make release-check       # executable release gate; fails if any measured criter
 12. [Assertion set](docs/assertions.md)
 13. [Bug diary](docs/bug_diary.md)
 14. [Formal evidence](docs/formal.md)
+15. [Optional DMA IOMMU/IOTLB](docs/iommu.md)
 
 ## Tool and Signoff Boundaries
 
-The default flow uses Verilator, SystemC 2.3.4, Python, C++, Yosys, Yosys-SMTBMC, and Z3. UVM uses Verilator `v5.048` and `uvm-verilator` commit `656f20d087370a7c742e00188d20bbf30fa95339`; older local builds are not accepted as equivalent runtime evidence. Results are open-source engineering evidence, not AXI certification, CDC signoff, timing signoff, or commercial formal closure. Solver evidence covers the QoS arbiter plus reduced asynchronous-FIFO, active-ID, local-error, and route-ownership harnesses; full-fabric formal, synthesis, and sequential equivalence remain explicitly frontend-limited. Unexecuted work is labeled `PARTIAL` or `SKIP`, never as passing evidence.
+The default flow uses Verilator, SystemC 2.3.4, Python, C++, Yosys, Yosys-SMTBMC, and Z3. UVM uses Verilator `v5.048` and `uvm-verilator` commit `656f20d087370a7c742e00188d20bbf30fa95339`; older local builds are not accepted as equivalent runtime evidence. Results are open-source engineering evidence, not AXI certification, CDC signoff, timing signoff, or commercial formal closure. Solver evidence covers the QoS arbiter plus reduced asynchronous-FIFO, active-ID, local-error, and route-ownership harnesses. Full-fabric synthesis and zero-delay netlist smoke are executable; full-state formal and unbounded sequential equivalence remain resource-limited. Unexecuted work is labeled `PARTIAL` or `SKIP`, never as passing evidence.

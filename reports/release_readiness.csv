@@ -13,7 +13,8 @@ cdc_clock_ratios,4,4,PASS
 performance_points,120,120,PASS
 sustained_qos_points,72,72,PASS
 illegal_target_checker_sensitivity,5,5,PASS
+iommu_coverage,19,19,PASS
 raw_design_branch_percent,95.0,90.0,PASS
-synthesized_blocks,2,2,PASS
-gate_level_smoke,1,1,PASS
+synthesized_blocks,4,4,PASS
+gate_level_smoke,2,2,PASS
 reviewed_executable_line_percent,93.35,90.0,PASS

@@ -16,6 +16,6 @@ The project separates simulation assertions from solver-backed evidence.
 | W owner held through final beat | Yosys-SMTBMC bounded safety | 40 | PASS |
 | Ownership handoff | Yosys-SMTBMC cover | 80 | PASS |
 | Four leaf mutations | Expected solver counterexamples | 20 | PASS |
-| Full 4x4 fabric | Yosys-SMT | NA | SKIP: installed frontend cannot parse multidimensional ports |
+| Full 4x4 fabric | Yosys-SMT | NA | SKIP: frontend elaborates; full-state proof remains resource-limited |
 
 The solver environment is reproducibly created by `make formal-env` with pinned `z3-solver==4.16.0.0`. The report closes **15 / 15** required bounded-simulation, proof, bounded-safety, cover, and expected-mutation groups. Covers prevent safety results from being presented without reachability evidence. Only the QoS arbiter safety property closes by induction; leaf groups are honestly labeled bounded safety, and this is not full-fabric commercial formal closure.

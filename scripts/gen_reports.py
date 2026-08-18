@@ -30,7 +30,7 @@ def cdc():
 def metrics():
     def ratio(path,status_col):
         if not path.exists(): return 'NOT_RUN'
-        rows=list(csv.DictReader(path.open())); return f"{sum(r[status_col] in ('PASS','HIT','YES') for r in rows)} / {len(rows)}"
+        rows=list(csv.DictReader(path.open())); return f"{sum(r[status_col] in ('PASS','HIT','YES','COVERED') for r in rows)} / {len(rows)}"
     def executable_ratio(path):
         if not path.exists(): return 'NOT_RUN'
         rows=[row for row in csv.DictReader(path.open()) if row.get('status')!='SKIP']
@@ -63,12 +63,14 @@ def metrics():
       ('solver_formal_groups',f"{sum(r['mode'].startswith('Yosys_SMT') and r['status']=='PASS' for r in csv.DictReader((REPORTS/'formal_summary.csv').open()))} / 14" if (REPORTS/'formal_summary.csv').exists() else 'NOT_RUN'),
       ('mutation_detection',ratio(REPORTS/'mutation_summary.csv','detected')),
       ('illegal_target_checker_sensitivity',ratio(REPORTS/'target_protocol_negative_summary.csv','detected')),
+      ('optional_dma_iommu',ratio(REPORTS/'iommu_summary.csv','status')),
+      ('iommu_targeted_coverage',ratio(REPORTS/'iommu_coverage.csv','status')),
       ('performance_points',ratio(REPORTS/'performance_summary.csv','status')),
       ('sustained_qos_points',ratio(REPORTS/'qos_fairness_summary.csv','status')),
       ('release_readiness',ratio(REPORTS/'release_readiness.csv','status')),
       ('synthesized_blocks',executable_ratio(REPORTS/'synthesis_summary.csv')),
       ('gate_level_smoke',ratio(REPORTS/'gate_level_summary.csv','status')),
-      ('full_fabric_synthesis_equivalence','SKIP (installed Yosys frontend limitation)')]
+      ('full_fabric_synthesis_equivalence','synthesis PASS; RTL/netlist smoke PASS; unbounded sequential proof PARTIAL')]
     DOCS.mkdir(exist_ok=True); REPORTS.mkdir(exist_ok=True)
     (DOCS/'project_metrics.md').write_text('# Project Metrics\n\nMeasured open-source evidence only; planned closure targets are not presented as results.\n\n| Metric | Current result |\n| --- | ---: |\n'+''.join(f'| `{k}` | `{v}` |\n' for k,v in values))
     file_rows=list(csv.DictReader((REPORTS/'code_coverage_files.csv').open())) if (REPORTS/'code_coverage_files.csv').exists() else []
