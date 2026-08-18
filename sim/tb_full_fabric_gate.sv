@@ -2,7 +2,8 @@
 
 module tb_full_fabric_gate;
   localparam int NM=4, NS=4, AW=32, DW=64, IW=4, TIW=6;
-  logic clk=0, rst_n=0;
+  logic clk, rst_n;
+  initial clk = 1'b0;
   always #5 clk=~clk;
   logic [NM-1:0] s_awvalid,s_awready,s_wvalid,s_wready,s_wlast,s_bvalid,s_bready;
   logic [NM-1:0][IW-1:0] s_awid,s_bid;
@@ -55,6 +56,7 @@ module tb_full_fabric_gate;
 
   initial begin
     logic [TIW-1:0] captured_id;
+    rst_n=0;
     s_awvalid='0;s_awid='0;s_awaddr='0;s_awlen='0;s_awsize='0;s_awburst='0;s_awprot='0;s_awqos='0;
     s_wvalid='0;s_wdata='0;s_wstrb='0;s_wlast='0;s_bready='1;
     s_arvalid='0;s_arid='0;s_araddr='0;s_arlen='0;s_arsize='0;s_arburst='0;s_arprot='0;s_arqos='0;s_rready='1;
