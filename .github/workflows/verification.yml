@@ -27,10 +27,29 @@ jobs:
             docs/*.md
   implementation:
     runs-on: ubuntu-24.04
+    env:
+      OSS_CAD_TAG: 2026-05-08
+      OSS_CAD_ARCHIVE: oss-cad-suite-linux-x64-20260508.tgz
+      OSS_CAD_SHA256: c71735b02df363e2ad8e9f129e477e4f31b18d6532e9bed92eb8ad296101cb6f
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y yosys verilator python3 make
-      - run: make synth-check equivalence-check gate-level-smoke
+      - run: sudo apt-get update && sudo apt-get install -y curl verilator python3 make
+      - uses: actions/cache@v6
+        id: oss-cad-cache
+        with:
+          path: ~/.cache/oss-cad-suite
+          key: oss-cad-suite-linux-x64-20260508
+      - name: Install pinned OSS CAD Suite
+        run: |
+          if [ ! -x "$HOME/.cache/oss-cad-suite/bin/yosys" ]; then
+            curl -L --retry 3 \
+              "https://github.com/YosysHQ/oss-cad-suite-build/releases/download/${OSS_CAD_TAG}/${OSS_CAD_ARCHIVE}" \
+              -o "/tmp/${OSS_CAD_ARCHIVE}"
+            echo "${OSS_CAD_SHA256}  /tmp/${OSS_CAD_ARCHIVE}" | sha256sum -c -
+            tar -xzf "/tmp/${OSS_CAD_ARCHIVE}" -C "$HOME/.cache"
+          fi
+          echo "$HOME/.cache/oss-cad-suite/bin" >> "$GITHUB_PATH"
+      - run: make synth-check equivalence-check gate-level-smoke YOSYS=$HOME/.cache/oss-cad-suite/bin/yosys
       - uses: actions/upload-artifact@v7
         if: always()
         with:
