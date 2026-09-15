@@ -36,7 +36,7 @@ Run `make reports` to refresh this generated snapshot from `reports/project_metr
 | Advanced interaction coverage | `24 / 24` |
 | Mutation detection | `6 / 6` |
 | Integrated CDC ratios | `4 / 4` |
-| Optional DMA IOMMU coverage | `19 / 19` |
+| Optional DMA IOMMU coverage | `22 / 22` |
 <!-- END GENERATED METRICS -->
 
 Additional measured evidence includes `46 / 46` canonical interaction crosses, `29` named assertion classes (`120` elaborated instances), `95.00%` raw branch coverage, and sustained QoS/fairness characterization. Formal/property evidence closes `15 / 15` groups: `14` solver-backed proof, bounded-safety, cover, and mutation groups plus `1` bounded Verilator simulation group. The complete 4x4 fabric now synthesizes through the pinned OSS CAD Suite, and both RTL and its zero-delay generic netlist pass the same mapped-routing and local-error smoke checks; unbounded sequential equivalence remains explicitly `PARTIAL` because induction is resource-limited.

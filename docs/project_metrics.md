@@ -27,7 +27,7 @@ Measured open-source evidence only; planned closure targets are not presented as
 | `mutation_detection` | `6 / 6` |
 | `illegal_target_checker_sensitivity` | `5 / 5` |
 | `optional_dma_iommu` | `1 / 1` |
-| `iommu_targeted_coverage` | `19 / 19` |
+| `iommu_targeted_coverage` | `22 / 22` |
 | `performance_points` | `120 / 120` |
 | `sustained_qos_points` | `72 / 72` |
 | `release_readiness` | `19 / 19` |

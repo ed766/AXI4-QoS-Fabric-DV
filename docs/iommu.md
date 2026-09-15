@@ -25,7 +25,7 @@ flowchart LR
 
 ## Verification Evidence
 
-`make iommu-check` runs `25` checked translations and closes `19 / 19` targeted points. The matrix covers hit/miss behavior, level-2 and superpage walks, read/write/user permissions, invalid entries at both levels, access errors, ASID isolation, targeted/global invalidation, replacement, and both request and response backpressure.
+`make iommu-check` runs `28` checked translations and closes `22 / 22` targeted points. The matrix covers hit/miss behavior, level-2 and superpage walks, read/write/user permissions, invalid entries at both levels, access errors, ASID isolation, targeted/global invalidation, replacement, both request and response backpressure, latched root context, unsupported upper physical-page bits, and misaligned-superpage rejection.
 
 Six named assertions protect page-walk and response stability, fault containment, response accounting, invalidation exclusion, and walk ownership. Current counters record five TLB hits, twenty misses, thirty-seven page-table reads, and five intentionally contained faults in the directed matrix. See [summary](../reports/iommu_summary.csv) and [coverage](../reports/iommu_coverage.csv).
 

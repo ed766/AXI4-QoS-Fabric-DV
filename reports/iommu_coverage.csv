@@ -18,3 +18,6 @@ response_backpressure,COVERED
 fault_no_paddr,COVERED
 one_response_per_request,COVERED
 reset_clean,COVERED
+misaligned_superpage_reject,COVERED
+upper_ppn_reject,COVERED
+latched_root_context,COVERED

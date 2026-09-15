@@ -6,7 +6,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];BUILD=ROOT/'build/iommu';REPORTS=ROOT/'reports'
 REQUIRED=("level2_walk","read_translation","tlb_hit","write_translation","permission_fault","user_fault",
   "invalid_l1","invalid_l2","walk_access_fault","superpage","asid_isolation","asid_invalidate","global_invalidate",
-  "round_robin_replacement","ptw_backpressure","response_backpressure","fault_no_paddr","one_response_per_request","reset_clean")
+  "round_robin_replacement","ptw_backpressure","response_backpressure","fault_no_paddr","one_response_per_request","reset_clean",
+  "misaligned_superpage_reject","upper_ppn_reject","latched_root_context")
 def main()->int:
   shutil.rmtree(BUILD,ignore_errors=True);BUILD.mkdir(parents=True)
   command=['verilator','--binary','--sv','--timing','--assert','-Wall','-Wno-BLKSEQ','-Wno-SYNCASYNCNET','-Wno-UNUSEDSIGNAL',
@@ -19,7 +20,7 @@ def main()->int:
   covered=set(re.findall(r'IOMMU_COVER\|([^\n\r]+)',log));passed=executed.returncode==0 and match and match.group(1)=='PASS'
   row={'test':'dma_iommu_matrix','status':'PASS' if passed else 'FAIL','checks':match.group(2) if match else '0',
     'failures':match.group(3) if match else 'NA','tlb_hits':match.group(4) if match else '0','tlb_misses':match.group(5) if match else '0',
-    'walk_reads':match.group(6) if match else '0','faults':match.group(7) if match else '0','assertions':'6'}
+    'walk_reads':match.group(6) if match else '0','faults':match.group(7) if match else '0','assertions':'7'}
   with (REPORTS/'iommu_summary.csv').open('w',newline='') as handle:
     writer=csv.DictWriter(handle,fieldnames=list(row),lineterminator='\n');writer.writeheader();writer.writerow(row)
   with (REPORTS/'iommu_coverage.csv').open('w',newline='') as handle:

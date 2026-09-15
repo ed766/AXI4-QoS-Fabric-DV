@@ -88,6 +88,26 @@ module tb_dma_iommu;
     translate(32'h4012_3456,5,0,0,32'hc012_3456,0,0,"superpage_miss");mark_cover("superpage");
     translate(32'h4012_3abc,5,0,0,32'hc012_3abc,0,1,"superpage_hit");
 
+    clear_map();invalidate(1,0);
+    map_word(root_pt_addr+((32'h4040_0000>>22)<<2),pte(32'hc010_0000,8'hc7));
+    translate(32'h4040_0000,5,0,0,0,1,0,"misaligned_superpage");mark_cover("misaligned_superpage_reject");
+
+    clear_map();invalidate(1,0);
+    map_word(root_pt_addr+((32'h4080_0000>>22)<<2),32'hc000_0401);
+    translate(32'h4080_0000,5,0,0,0,1,0,"upper_ppn_reject");mark_cover("upper_ppn_reject");
+
+    clear_map();invalidate(1,0);map_page(32'h40c0_0000,32'h2000_0000,8'hc7,32'h8100_6000);
+    fork
+      begin
+        wait(req_valid && req_ready);
+        @(negedge clk); root_pt_addr=32'h8800_0000;
+      end
+      begin
+        translate(32'h40c0_0040,8'h33,0,0,32'h2000_0040,0,0,"latched_root_context");
+      end
+    join
+    root_pt_addr=32'h8000_0000;mark_cover("latched_root_context");
+
     clear_map();invalidate(1,0);map_page(32'h0180_0000,32'hd000_0000,8'hc7,32'h8100_4000);
     translate(32'h0180_0010,8'h11,0,0,32'hd000_0010,0,0,"asid_a_fill");
     clear_map();map_page(32'h0180_0000,32'he000_0000,8'hc7,32'h8100_5000);
