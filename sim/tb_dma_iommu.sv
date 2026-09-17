@@ -8,7 +8,7 @@ module tb_dma_iommu;
   logic inv_valid,inv_all;logic[7:0]inv_asid;
   logic ptw_req_valid,ptw_req_ready;logic[31:0]ptw_req_addr;
   logic ptw_rsp_valid,ptw_rsp_ready;logic[31:0]ptw_rsp_data;logic ptw_rsp_error;
-  logic[31:0]perf_tlb_hits,perf_tlb_misses,perf_walk_reads,perf_faults;
+  logic[31:0]perf_tlb_hits,perf_tlb_misses,perf_walk_reads,perf_faults;logic idle;
   dma_iommu dut(.*);
 
   logic[31:0]map_addr[0:127],map_data[0:127];integer map_count;
